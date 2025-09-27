@@ -1,3 +1,6 @@
 [submodule "vendored/EnTT"]
 	path = vendored/EnTT
 	url = https://github.com/skypjack/entt.git
+[submodule "vendored/SDL"]
+	path = vendored/SDL
+	url = https://github.com/libsdl-org/SDL.git
