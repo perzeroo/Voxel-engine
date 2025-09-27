@@ -1,0 +1,3 @@
+[submodule "vendored/EnTT"]
+	path = vendored/EnTT
+	url = https://github.com/skypjack/entt.git
