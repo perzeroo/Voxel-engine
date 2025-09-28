@@ -1,5 +1,5 @@
 #pragma once
 
-namespace Engine::RenderUtils {
+namespace Engine::Utils {
   
 }
