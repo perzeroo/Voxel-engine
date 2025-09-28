@@ -1,6 +1,7 @@
 #include <engine/chunk/ChunkMesh.hpp>
 
 void Engine::Chunk::ChunkMesh::setupMesh() {
+  removeMesh();
   if (VAO == 0) {
     glGenVertexArrays(1, &VAO);
   }
@@ -27,4 +28,19 @@ void Engine::Chunk::ChunkMesh::setupMesh() {
   glEnableVertexAttribArray(1);
 
   glBindVertexArray(0);
+}
+
+void Engine::Chunk::ChunkMesh::removeMesh() {
+  if (EBO != 0) {
+    glDeleteBuffers(1, &EBO);
+    EBO = 0;
+  }
+  if (VBO != 0) {
+    glDeleteBuffers(1, &VBO);
+    VBO = 0;
+  }
+  if (VAO != 0) {
+    glDeleteVertexArrays(1, &VAO);
+    VAO = 0;
+  }
 }

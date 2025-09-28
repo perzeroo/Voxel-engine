@@ -1,21 +1,22 @@
 #include <glad/glad.h>
+#include <SDL3/SDL_opengl.h>
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_video.h"
 #define SDL_MAIN_USE_CALLBACKS 1  /* use the callbacks instead of main() */
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <core/Application.hpp>
-// #include <consoleapi.h>
+#include <windows.h>
 
-// void AttachConsoleForLogging() {
-//     AllocConsole(); // create a new console
-//     freopen("CONOUT$", "w", stdout);  // redirect stdout to console
-//     freopen("CONOUT$", "w", stderr);  // redirect stderr to console
-// }
+void AttachConsoleForLogging() {
+    AllocConsole(); // create a new console
+    freopen("CONOUT$", "w", stdout);  // redirect stdout to console
+    freopen("CONOUT$", "w", stderr);  // redirect stderr to console
+}
 /* This function runs once at startup. */
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
 {
-  // AttachConsoleForLogging();
+  AttachConsoleForLogging();
   SDL_SetAppMetadata("Voxel Engine", "1.0", "me.perzero.voxel-engine");
 
   if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -23,21 +24,35 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     return SDL_APP_FAILURE;
   }
 
+  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+  SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+  SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+
   SDL_Window *window = SDL_CreateWindow("Voxel Engine", 1280, 720, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
   if (!window) {
     SDL_Log("Couldn't create window: %s", SDL_GetError());
     return SDL_APP_FAILURE;
   }
+
   SDL_GLContext context = SDL_GL_CreateContext(window);
   if (!context) {
     SDL_Log("Couldn't create OpenGL context: %s", SDL_GetError());
     SDL_DestroyWindow(window);
     return SDL_APP_FAILURE;
   }
+  if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
+    SDL_Log("Failed to initialize GLAD");
+    SDL_GL_DestroyContext(context);
+    SDL_DestroyWindow(window);
+    return SDL_APP_FAILURE;
+  }
+
+  SDL_GL_MakeCurrent(window, context);
   SDL_GL_SetSwapInterval(1);
   
-  glEnable(GL_DEPTH_TEST);
-
   *appstate = new Core::Application(window, context);
   Core::Application* app = (Core::Application*)(*appstate);
   app->start();

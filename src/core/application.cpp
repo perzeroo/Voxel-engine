@@ -1,42 +1,45 @@
-#include "SDL3/SDL_oldnames.h"
+#include "SDL3/SDL_events.h"
+#include "SDL3/SDL_keycode.h"
 #include "SDL3/SDL_timer.h"
 #include "engine/Camera.hpp"
 #include "engine/Input.hpp"
+#include "engine/ShaderManager.hpp"
 #include "engine/Transform.hpp"
-#include "engine/chunk/ChunkData.hpp"
-#include "core/Common.hpp"
-#include <core/Application.hpp>
+#include "engine/chunk/ChunkManager.hpp"
+#include "engine/chunk/ChunkMesh.hpp"
 #include "engine/chunk/ChunkMeshBuilder.hpp"
-#include "glm/gtc/type_ptr.hpp"
+#include "engine/chunk/ChunkPosition.hpp"
 #include "engine/utils/Utils.hpp"
+#include "glm/gtc/type_ptr.hpp"
+#include <core/Application.hpp>
 
 namespace Core {
-Application::Application(SDL_Window* win, SDL_GLContext &context)  {
+Application::Application(SDL_Window *win, SDL_GLContext &context)
+    : m_chunkManager(*new Engine::Chunk::ChunkManager(m_registry)) {
   m_window = win;
   m_context = context;
   appQuit = SDL_APP_CONTINUE;
 }
 
 void Application::start() {
+  glEnable(GL_DEPTH_TEST);
+
+  Engine::Render::ShaderManager::load("default", "assets/shaders/basic.vert",
+                                      "assets/shaders/basic.frag");
+  Engine::Render::ShaderManager::load("chunk", "assets/shaders/chunk.vert",
+                                      "assets/shaders/chunk.frag");
   onWindowResize();
 
   SDL_SetWindowRelativeMouseMode(m_window, true);
   m_windowFocused = true;
   Engine::Input::instance().init(this);
 
-  Engine::Chunk::ChunkData chunk;
-  for (int i = 0; i < CHUNK_SIZE; i++) {
-    chunk.voxels[i].type = 1;
+  m_activeCamera = Engine::Utils::cameraWithControllerEntity(m_registry);
+  for (int x = -4; x < 4; x++) {
+    for (int z = -4; z < 4; z++) {
+      m_chunkManager.createChunk(x, 0, z);
+    }
   }
-
-  const auto chunkEntity = m_registry.create();
-  m_registry.emplace<Engine::Chunk::ChunkData>(chunkEntity, chunk);
-  m_registry.emplace<Engine::Chunk::ChunkMeshBuilder>(chunkEntity);
-
-  Engine::Camera camComponent = Engine::Utils::defaultCamera(60.0f);
-  Engine::Transform camTransform = Engine::Utils::defaultTransform();
-
-  Engine::Utils::cameraWithControllerEntity(m_registry);
 
   m_now = SDL_GetPerformanceCounter();
 }
@@ -44,81 +47,71 @@ void Application::start() {
 void Application::update() {
   m_last = m_now;
   m_now = SDL_GetPerformanceCounter();
-  float dt = static_cast<double>(m_now - m_last) / SDL_GetPerformanceFrequency();
+  Engine::Chunk::ChunkManager::CHUNKS_GENERATED_THIS_FRAME = 0;
+  float dt =
+      static_cast<double>(m_now - m_last) / SDL_GetPerformanceFrequency();
   Engine::CameraControllerSystem::update(m_registry, dt);
+
+  if (m_activeCamera == entt::null) {
+    return;
+  }
+  auto playerPosition =
+      m_registry.get<Engine::Transform>(m_activeCamera).position;
+  Engine::Chunk::ChunkPosition playerChunkPos = {
+      static_cast<int>(floor(playerPosition.x / CHUNK_WIDTH)),
+      static_cast<int>(floor(playerPosition.y / CHUNK_WIDTH)),
+      static_cast<int>(floor(playerPosition.z / CHUNK_WIDTH))};
+  auto renderDistance = 8;
+  m_chunkManager.deleteOldChunks(playerChunkPos.x, playerChunkPos.z,
+                                 renderDistance * 2);
+  for (int x = -renderDistance; x < renderDistance; x++) {
+    for (int z = -renderDistance; z < renderDistance; z++) {
+      m_chunkManager.createChunk(x + playerChunkPos.x, 0, z + playerChunkPos.z);
+    }
+  }
 }
 
-void Application::handleEvents(SDL_Event* event) {
+void Application::handleEvents(SDL_Event *event) {
   switch (event->type) {
-    case SDL_EVENT_WINDOW_FOCUS_GAINED:
-      m_windowFocused = true;
-      SDL_SetWindowRelativeMouseMode(m_window, true);
-      break;
-    case SDL_EVENT_WINDOW_FOCUS_LOST:
-      m_windowFocused = false;
-      SDL_SetWindowRelativeMouseMode(m_window, false);
-      break;
-    default:
-      break;
+  case SDL_EVENT_WINDOW_FOCUS_GAINED:
+    m_windowFocused = true;
+    SDL_SetWindowRelativeMouseMode(m_window, true);
+    break;
+  case SDL_EVENT_WINDOW_FOCUS_LOST:
+    m_windowFocused = false;
+    SDL_SetWindowRelativeMouseMode(m_window, false);
+    break;
+  case SDL_EVENT_KEY_DOWN:
+    if (event->key.key == SDLK_N) {
+      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    } else if (event->key.key == SDLK_M) {
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
+    break;
+  default:
+    break;
   }
 }
 
 void Application::render() {
   clearScreen();
-  glm::mat4 viewProjection = Engine::CameraSystem::update(m_registry, (float)m_width / (float)m_height);
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-  glLoadMatrixf(glm::value_ptr(viewProjection));
-  glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
-  glTranslatef(0.0f, 0.0f, -5.0f);
-  glRotatef((float)SDL_GetTicks() * 0.05f, 0.0f, 1.0f, 0.0f);
+  glm::mat4 viewProjection = Engine::CameraSystem::update(
+      m_registry, (float)m_width / (float)m_height);
 
-  glBegin(GL_QUADS);
+  // GLint vpLoc = glGetUniformLocation(m_shaderProgram, "u_ViewProjection");
+  // glUniformMatrix4fv(vpLoc, 1, GL_FALSE, glm::value_ptr(viewProjection));
 
-    // Front
-    glColor3f(1, 0, 0);
-    glVertex3f(-1, -1,  1);
-    glVertex3f( 1, -1,  1);
-    glVertex3f( 1,  1,  1);
-    glVertex3f(-1,  1,  1);
+  auto view =
+      m_registry
+          .view<Engine::Chunk::ChunkMesh, Engine::Chunk::ChunkMeshRenderer,
+                Engine::Chunk::ChunkPosition>();
+  for (auto entity : view) {
+    auto &mesh = view.get<Engine::Chunk::ChunkMesh>(entity);
+    auto &renderer = view.get<Engine::Chunk::ChunkMeshRenderer>(entity);
+    auto &position = view.get<Engine::Chunk::ChunkPosition>(entity);
+    renderer.render(mesh, position, viewProjection);
+  }
 
-    // Back
-    glColor3f(0, 1, 0);
-    glVertex3f(-1, -1, -1);
-    glVertex3f(-1,  1, -1);
-    glVertex3f( 1,  1, -1);
-    glVertex3f( 1, -1, -1);
-
-    // Top
-    glColor3f(0, 0, 1);
-    glVertex3f(-1, 1, -1);
-    glVertex3f(-1, 1,  1);
-    glVertex3f( 1, 1,  1);
-    glVertex3f( 1, 1, -1);
-
-    // Bottom
-    glColor3f(1, 1, 0);
-    glVertex3f(-1, -1, -1);
-    glVertex3f( 1, -1, -1);
-    glVertex3f( 1, -1,  1);
-    glVertex3f(-1, -1,  1);
-
-    // Right
-    glColor3f(1, 0, 1);
-    glVertex3f(1, -1, -1);
-    glVertex3f(1,  1, -1);
-    glVertex3f(1,  1,  1);
-    glVertex3f(1, -1,  1);
-
-    // Left
-    glColor3f(0, 1, 1);
-    glVertex3f(-1, -1, -1);
-    glVertex3f(-1, -1,  1);
-    glVertex3f(-1,  1,  1);
-    glVertex3f(-1,  1, -1);
-
-    glEnd();
   SDL_GL_SwapWindow(m_window);
 }
 
@@ -129,35 +122,11 @@ void Application::onWindowResize() {
   m_height = h;
 }
 
-Application::~Application() {
-}
+Application::~Application() {}
 
 void Application::clearScreen() {
   glViewport(0, 0, m_width, m_height);
   glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
-
-void  Application::perspective(float fovY, float aspect, float zNear, float zFar, float* matrix) {
-  const float f = 1.0f / tanf(fovY * 0.5f * (3.14159265358979323846f / 180.0f));
-  matrix[0] = f / aspect;
-  matrix[1] = 0.0f;
-  matrix[2] = 0.0f;
-  matrix[3] = 0.0f;
-
-  matrix[4] = 0.0f;
-  matrix[5] = f;
-  matrix[6] = 0.0f;
-  matrix[7] = 0.0f;
-
-  matrix[8] = 0.0f;
-  matrix[9] = 0.0f;
-  matrix[10] = (zFar + zNear) / (zNear - zFar);
-  matrix[11] = -1.0f;
-
-  matrix[12] = 0.0f;
-  matrix[13] = 0.0f;
-  matrix[14] = (2.0f * zFar * zNear) / (zNear - zFar);
-  matrix[15] = 0.0f;
-}
-}
+} // namespace Core

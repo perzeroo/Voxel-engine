@@ -14,6 +14,23 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+add_compile_options(-Wall -Wextra -Wno-unused-parameter -fno-elide-type -ftemplate-backtrace-limit=0)
+
+file(GLOB SHADERS "{PROJECT_SOURCE_DIR}/assets/shaders/*")
+foreach(shader ${SHADERS})
+  add_custom_command(TARGET voxel-engine POST_BUILD 
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    ${shader} $<TARGET_FILE_DIR:voxel-engine>/assets/shaders)
+endforeach()
+
+if(MINGW)
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        add_compile_options(-m64)
+    else()
+        add_compile_options(-m32)
+    endif()
+endif()
+
 include(FetchContent)
 
 FetchContent_Declare(
@@ -24,6 +41,9 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(glm)
 
 # This assumes the SDL source is available in vendored/SDL
+set(SDL_OPENGLES OFF)
+set(SDL_SHARED OFF)
+set(SDL_STATIC ON)
 add_subdirectory(vendored/SDL EXCLUDE_FROM_ALL)
 add_subdirectory(vendored/entt EXCLUDE_FROM_ALL)
 add_subdirectory(vendored/glad)
@@ -37,8 +57,15 @@ src/core/Application.cpp
 src/engine/Camera.cpp
 src/engine/chunk/ChunkMeshBuilder.cpp
 src/engine/chunk/ChunkMesh.cpp
+src/engine/Render.cpp
+src/engine/File.cpp
+src/engine/chunk/ChunkData.cpp
+src/engine/chunk/ChunkManager.cpp
+src/engine/world/WorldGenerator.cpp
+src/engine/ShaderManager.cpp
 )
 target_include_directories(voxel-engine PRIVATE include)
 
 # Link to the actual SDL3 library.
-target_link_libraries(voxel-engine PRIVATE SDL3::SDL3 OpenGL::GL EnTT::EnTT glad glm::glm)
+target_link_libraries(voxel-engine PRIVATE SDL3::SDL3 EnTT::EnTT glad OpenGL::GL glm::glm)
+
