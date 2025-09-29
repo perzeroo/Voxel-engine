@@ -25,7 +25,7 @@ void Engine::Chunk::ChunkMeshBuilder::on_chunk_data_change(
 void Engine::Chunk::ChunkMeshBuilder::build(ChunkData &chunkData,
                                             ChunkMesh &chunkMesh) {
   if (Engine::Chunk::ChunkManager::CHUNKS_GENERATED_THIS_FRAME++ > 16) {
-    return; // Limit to 16 chunks per frame
+    // return; // Limit to 16 chunks per frame
   }
   unsigned int startTime = SDL_GetTicks();
   SDL_Log("Building chunk mesh...");

@@ -14,7 +14,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_compile_options(-Wall -Wextra -Wno-unused-parameter -fno-elide-type -ftemplate-backtrace-limit=0)
+
 
 file(GLOB SHADERS "{PROJECT_SOURCE_DIR}/assets/shaders/*")
 foreach(shader ${SHADERS})
@@ -48,6 +48,7 @@ add_subdirectory(vendored/SDL EXCLUDE_FROM_ALL)
 add_subdirectory(vendored/entt EXCLUDE_FROM_ALL)
 add_subdirectory(vendored/glad)
 
+
 find_package(OpenGL REQUIRED)
 
 # Create your game executable target as usual
@@ -66,6 +67,8 @@ src/engine/ShaderManager.cpp
 )
 target_include_directories(voxel-engine PRIVATE include)
 
+# target_compile_options(voxel-engine PRIVATE -Wall -Wextra -Wno-unused-parameter -fno-elide-type -ftemplate-backtrace-limit=0>)
 # Link to the actual SDL3 library.
 target_link_libraries(voxel-engine PRIVATE SDL3::SDL3 EnTT::EnTT glad OpenGL::GL glm::glm)
 
+target_compile_options(SDL3-static PRIVATE -Wno-unused-parameter -Wno-deprecated-declarations)
