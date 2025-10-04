@@ -7,15 +7,14 @@
 #include "engine/Transform.hpp"
 #include "engine/chunk/ChunkManager.hpp"
 #include "engine/chunk/ChunkMesh.hpp"
-#include "engine/chunk/ChunkMeshBuilder.hpp"
 #include "engine/chunk/ChunkPosition.hpp"
 #include "engine/utils/Utils.hpp"
-#include "glm/gtc/type_ptr.hpp"
 #include <core/Application.hpp>
+#include <memory>
 
 namespace Core {
 Application::Application(SDL_Window *win, SDL_GLContext &context)
-    : m_chunkManager(*new Engine::Chunk::ChunkManager(m_registry)) {
+    : m_chunkManager(std::make_unique<Engine::Chunk::ChunkManager>(m_registry)) {
   m_window = win;
   m_context = context;
   appQuit = SDL_APP_CONTINUE;
@@ -37,7 +36,7 @@ void Application::start() {
   m_activeCamera = Engine::Utils::cameraWithControllerEntity(m_registry);
   for (int x = -4; x < 4; x++) {
     for (int z = -4; z < 4; z++) {
-      m_chunkManager.createChunk(x, 0, z);
+      m_chunkManager->createChunk(x, 0, z);
     }
   }
 
@@ -47,10 +46,10 @@ void Application::start() {
 void Application::update() {
   m_last = m_now;
   m_now = SDL_GetPerformanceCounter();
-  Engine::Chunk::ChunkManager::CHUNKS_GENERATED_THIS_FRAME = 0;
   float dt =
       static_cast<double>(m_now - m_last) / SDL_GetPerformanceFrequency();
   Engine::CameraControllerSystem::update(m_registry, dt);
+  m_chunkManager->processChunkUpdates();
 
   if (m_activeCamera == entt::null) {
     return;
@@ -62,11 +61,11 @@ void Application::update() {
       static_cast<int>(floor(playerPosition.y / CHUNK_WIDTH)),
       static_cast<int>(floor(playerPosition.z / CHUNK_WIDTH))};
   auto renderDistance = 8;
-  m_chunkManager.deleteOldChunks(playerChunkPos.x, playerChunkPos.z,
+  m_chunkManager->deleteOldChunks(playerChunkPos.x, playerChunkPos.z,
                                  renderDistance * 2);
   for (int x = -renderDistance; x < renderDistance; x++) {
     for (int z = -renderDistance; z < renderDistance; z++) {
-      m_chunkManager.createChunk(x + playerChunkPos.x, 0, z + playerChunkPos.z);
+      m_chunkManager->createChunk(x + playerChunkPos.x, 0, z + playerChunkPos.z);
     }
   }
 }

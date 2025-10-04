@@ -3,19 +3,16 @@
 #include "engine/chunk/ChunkPosition.hpp"
 #include "engine/voxel/Voxel.hpp"
 #include "engine/world/WorldGenerator.hpp"
+#include "thirdparty/cameron314/concurrentqueue.hpp"
 #include <entt/entt.hpp>
 #include <unordered_map>
+#include "engine/chunk/ChunkUpdate.hpp"
 
 namespace Engine::Chunk {
 class ChunkManager {
 public:
   ChunkManager(entt::registry &registry)
       : m_registry(registry), m_worldGenerator() {}
-
-  // ChunkManager(ChunkManager &&) = default;
-  // ChunkManager(const ChunkManager &) = default;
-  // ChunkManager &operator=(ChunkManager &&) = delete;
-  // ChunkManager &operator=(const ChunkManager &) = delete;
 
   entt::entity createChunk(int x, int y, int z);
   entt::entity getChunk(const Engine::Chunk::ChunkPosition &position) const {
@@ -37,7 +34,7 @@ public:
     int localY = y % 16;
     int localZ = z % 16;
     int index = Engine::Chunk::getIdx(localX, localY, localZ);
-    if (index < 0 || index >= 4096) {
+    if (index < 0 || index >= CHUNK_SIZE) {
       return {0};
     }
     return chunkData.voxels[index];
@@ -45,28 +42,15 @@ public:
 
   void deleteOldChunks(int playerX, int playerZ, int radius);
   void deleteChunk(int x, int y, int z);
+  void addChunkToQueue(entt::entity chunkEntity);
+  void processChunkUpdates();
 
   ~ChunkManager() = default;
-  static int CHUNKS_GENERATED_THIS_FRAME;
 
 private:
   entt::registry &m_registry;
   Engine::World::WorldGenerator m_worldGenerator;
   std::unordered_map<Engine::Chunk::ChunkPosition, entt::entity> m_chunkMap;
+  moodycamel::ConcurrentQueue<std::shared_ptr<Engine::Chunk::ChunkUpdate>> m_chunkUpdateQueue;
 };
-// class MyClass {
-// public:
-//   MyClass();
-//   MyClass(MyClass &&) = default;
-//   MyClass(const MyClass &) = default;
-//   MyClass &operator=(MyClass &&) = default;
-//   MyClass &operator=(const MyClass &) = default;
-//   ~MyClass();
-//
-// private:
-// };
-//
-// MyClass::MyClass() {}
-//
-// MyClass::~MyClass() {}
-} // namespace Engine::Chunk
+}

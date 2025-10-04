@@ -64,6 +64,7 @@ src/engine/chunk/ChunkData.cpp
 src/engine/chunk/ChunkManager.cpp
 src/engine/world/WorldGenerator.cpp
 src/engine/ShaderManager.cpp
+src/engine/ThreadPool.cpp
 )
 target_include_directories(voxel-engine PRIVATE include)
 

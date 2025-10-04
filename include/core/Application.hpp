@@ -30,8 +30,7 @@ private:
   int m_width, m_height;
   uint64_t m_now, m_last;
   bool m_windowFocused;
-  GLuint m_shaderProgram = 0;
-  Engine::Chunk::ChunkManager m_chunkManager;
+  std::unique_ptr<Engine::Chunk::ChunkManager> m_chunkManager;
   entt::entity m_activeCamera = entt::null;
   void clearScreen();
   void perspective(float fovY, float aspect, float zNear, float zFar,
