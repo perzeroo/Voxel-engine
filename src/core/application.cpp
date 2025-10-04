@@ -1,5 +1,6 @@
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_keycode.h"
+#include "SDL3/SDL_log.h"
 #include "SDL3/SDL_timer.h"
 #include "engine/Camera.hpp"
 #include "engine/Input.hpp"
@@ -14,7 +15,8 @@
 
 namespace Core {
 Application::Application(SDL_Window *win, SDL_GLContext &context)
-    : m_chunkManager(std::make_unique<Engine::Chunk::ChunkManager>(m_registry)) {
+    : m_chunkManager(
+          std::make_unique<Engine::Chunk::ChunkManager>(m_registry)) {
   m_window = win;
   m_context = context;
   appQuit = SDL_APP_CONTINUE;
@@ -46,8 +48,10 @@ void Application::start() {
 void Application::update() {
   m_last = m_now;
   m_now = SDL_GetPerformanceCounter();
+  // m_now = SDL_GetTicks();
   float dt =
       static_cast<double>(m_now - m_last) / SDL_GetPerformanceFrequency();
+  // static_cast<float>(m_now - m_last) / 1000.0f;
   Engine::CameraControllerSystem::update(m_registry, dt);
   m_chunkManager->processChunkUpdates();
 
@@ -62,12 +66,15 @@ void Application::update() {
       static_cast<int>(floor(playerPosition.z / CHUNK_WIDTH))};
   auto renderDistance = 8;
   m_chunkManager->deleteOldChunks(playerChunkPos.x, playerChunkPos.z,
-                                 renderDistance * 2);
+                                  renderDistance * 2);
+  unsigned int now = SDL_GetTicks();
   for (int x = -renderDistance; x < renderDistance; x++) {
     for (int z = -renderDistance; z < renderDistance; z++) {
-      m_chunkManager->createChunk(x + playerChunkPos.x, 0, z + playerChunkPos.z);
+      m_chunkManager->createChunk(x + playerChunkPos.x, 0,
+                                  z + playerChunkPos.z);
     }
   }
+  SDL_Log("Create chunks took %u ms", SDL_GetTicks() - now);
 }
 
 void Application::handleEvents(SDL_Event *event) {

@@ -1,12 +1,12 @@
 #include "engine/chunk/ChunkManager.hpp"
 #include "SDL3/SDL_log.h"
+#include "engine/Engine.hpp"
 #include "engine/ThreadPool.hpp"
 #include "engine/chunk/ChunkData.hpp"
 #include "engine/chunk/ChunkMesh.hpp"
 #include "engine/chunk/ChunkMeshBuilder.hpp"
 #include "engine/chunk/ChunkPosition.hpp"
 #include "engine/world/WorldGenerator.hpp"
-#include "engine/Engine.hpp"
 
 entt::entity Engine::Chunk::ChunkManager::createChunk(int x, int y, int z) {
   auto chunkPos = Engine::Chunk::ChunkPosition{x, y, z};
@@ -17,33 +17,34 @@ entt::entity Engine::Chunk::ChunkManager::createChunk(int x, int y, int z) {
   }
 
   entt::entity chunkEntity = m_registry.create();
-  Engine::Chunk::ChunkData chunkData;
-  m_worldGenerator.generateChunk(x, y, z, chunkData);
-  m_registry.emplace<Engine::Chunk::ChunkData>(chunkEntity, chunkData);
   m_registry.emplace<Engine::Chunk::ChunkMeshBuilder>(chunkEntity);
   m_registry.emplace<Engine::Chunk::ChunkMeshRenderer>(
       chunkEntity, Engine::Render::ShaderManager::get("chunk"));
   m_registry.emplace<Engine::Chunk::ChunkPosition>(chunkEntity, chunkPos);
   m_registry.emplace<Engine::Dirty>(chunkEntity);
 
-  ThreadPool::getInstance().enqueueTask([this, chunkEntity]() {
-    addChunkToQueue(chunkEntity);
-  });
+  ThreadPool::getInstance().enqueueTask(
+      [this, chunkEntity]() { addChunkToQueue(chunkEntity); });
 
   m_chunkMap[chunkPos] = chunkEntity;
   return chunkEntity;
 }
 
 void Engine::Chunk::ChunkManager::addChunkToQueue(entt::entity chunkEntity) {
-  if (!m_registry.all_of<Engine::Chunk::ChunkData>(chunkEntity)) {
-    SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                "Entity is not a chunk data entity");
-    return;
-  }
-  auto &chunkData = m_registry.get<Engine::Chunk::ChunkData>(chunkEntity);
-  auto chunkUpdate = chunkData.buildChunkMesh();
-  m_chunkUpdateQueue.enqueue(
-      std::make_shared<Engine::Chunk::ChunkUpdate>(chunkEntity, chunkUpdate));
+  // if (!m_registry.all_of<Engine::Chunk::ChunkData>(chunkEntity)) {
+  //   SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+  //               "Entity is not a chunk data entity");
+  //   return;
+  // }
+  auto &chunkPos = m_registry.get<Engine::Chunk::ChunkPosition>(chunkEntity);
+  auto chunkData = std::make_shared<Engine::Chunk::ChunkData>();
+  m_worldGenerator.generateChunk(chunkPos.x, chunkPos.y, chunkPos.z,
+                                 *chunkData);
+  // m_registry.emplace<Engine::Chunk::ChunkData>(chunkEntity, chunkData);
+  // auto &chunkData = m_registry.get<Engine::Chunk::ChunkData>(chunkEntity);
+  auto chunkUpdate = chunkData->buildChunkMesh();
+  m_chunkUpdateQueue.enqueue(std::make_shared<Engine::Chunk::ChunkUpdate>(
+      chunkEntity, chunkUpdate, chunkData, true));
 }
 
 void Engine::Chunk::ChunkManager::processChunkUpdates() {
@@ -56,8 +57,14 @@ void Engine::Chunk::ChunkManager::processChunkUpdates() {
             chunkUpdate->entity)) {
       continue; // Entity is not a chunk mesh renderer entity
     }
-    m_registry.replace<Engine::Chunk::ChunkMesh>(
+    chunkUpdate->newMesh->setupMesh();
+    m_registry.emplace_or_replace<Engine::Chunk::ChunkMesh>(
         chunkUpdate->entity, *(chunkUpdate->newMesh));
+    if (chunkUpdate->updateData) {
+      m_registry.emplace_or_replace<Engine::Chunk::ChunkData>(
+          chunkUpdate->entity, *(chunkUpdate->newData));
+    }
+
     m_registry.remove<Engine::Dirty>(chunkUpdate->entity);
   }
 }

@@ -4,16 +4,18 @@
 #include <engine/chunk/ChunkMeshBuilder.hpp>
 #include <memory>
 
-void Engine::Chunk::ChunkData::on_update(entt::registry &registry, entt::entity entity) {
+void Engine::Chunk::ChunkData::on_update(entt::registry &registry,
+                                         entt::entity entity) {
   if (registry.all_of<ChunkMeshBuilder>(entity)) {
     // ChunkMeshBuilder::on_chunk_data_change(registry, entity);
-    registry.emplace<Engine::Dirty>(entity);
+    // registry.emplace<Engine::Dirty>(entity);
   }
 }
 
-std::shared_ptr<Engine::Chunk::ChunkMesh> Engine::Chunk::ChunkData::buildChunkMesh() {
+std::shared_ptr<Engine::Chunk::ChunkMesh>
+Engine::Chunk::ChunkData::buildChunkMesh() {
   auto chunkMesh = std::make_shared<ChunkMesh>();
-  
+
   chunkMesh->vertices.clear();
   chunkMesh->indices.clear();
 
@@ -34,8 +36,7 @@ std::shared_ptr<Engine::Chunk::ChunkMesh> Engine::Chunk::ChunkData::buildChunkMe
     unsigned int baseIndex =
         static_cast<unsigned int>(chunkMesh->vertices.size());
 
-    if (z == CHUNK_WIDTH - 1 ||
-        voxels[getIdx(x, y, z + 1)].type == 0) {
+    if (z == CHUNK_WIDTH - 1 || voxels[getIdx(x, y, z + 1)].type == 0) {
       // Front face
       for (int i = 0; i < 6; ++i) {
         if (i < 4) {
@@ -59,8 +60,7 @@ std::shared_ptr<Engine::Chunk::ChunkMesh> Engine::Chunk::ChunkData::buildChunkMe
       }
       baseIndex += 4;
     }
-    if (x == CHUNK_WIDTH - 1 ||
-        voxels[getIdx(x + 1, y, z)].type == 0) {
+    if (x == CHUNK_WIDTH - 1 || voxels[getIdx(x + 1, y, z)].type == 0) {
       // Right face
       for (int i = 0; i < 6; ++i) {
         if (i < 4) {
@@ -84,8 +84,7 @@ std::shared_ptr<Engine::Chunk::ChunkMesh> Engine::Chunk::ChunkData::buildChunkMe
       }
       baseIndex += 4;
     }
-    if (y == CHUNK_WIDTH - 1 ||
-        voxels[getIdx(x, y + 1, z)].type == 0) {
+    if (y == CHUNK_WIDTH - 1 || voxels[getIdx(x, y + 1, z)].type == 0) {
       // Top face
       for (int i = 0; i < 6; ++i) {
         if (i < 4) {
@@ -110,6 +109,5 @@ std::shared_ptr<Engine::Chunk::ChunkMesh> Engine::Chunk::ChunkData::buildChunkMe
       baseIndex += 4;
     }
   }
-  chunkMesh->setupMesh();
   return chunkMesh;
 }

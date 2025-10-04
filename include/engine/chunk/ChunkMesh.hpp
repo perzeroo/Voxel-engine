@@ -23,6 +23,7 @@ struct ChunkMeshRenderer {
   void render(ChunkMesh &mesh, const ChunkPosition &position,
               const glm::mat4 &viewProjection) {
     if (mesh.VAO == 0 || mesh.indices.empty()) {
+      // mesh.setupMesh();
       return; // Nothing to render
     }
     shader.use();
