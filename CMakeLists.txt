@@ -1,5 +1,14 @@
 cmake_minimum_required(VERSION 3.16)
 project(voxel-engine)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    message(STATUS "Clang detected, enabling AddressSanitizer")
+
+    # Enable AddressSanitizer
+    # add_compile_options(-gcodeview -gdwarf-2 -fsanitize=address -fno-omit-frame-pointer)
+    # add_link_options(-fsanitize=address)
+endif()
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # set the output directory for built objects.
 # This makes sure that the dynamic library goes into the build directory automatically.
@@ -40,6 +49,20 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(glm)
 
+# option(TRACY_ENABLE ON)
+set(TRACY_ENABLE ON CACHE BOOL "" FORCE)
+# option(TRACY_ON_DEMAND ON)
+
+FetchContent_Declare(
+  tracy
+  GIT_REPOSITORY https://github.com/wolfpld/tracy.git
+  GIT_TAG c556831ddc6fe26d2fce01c14c97205a9dad46d5
+  GIT_SHALLOW TRUE
+  GIT_PROGRESS TRUE
+)
+
+FetchContent_MakeAvailable(tracy)
+
 # This assumes the SDL source is available in vendored/SDL
 set(SDL_OPENGLES OFF)
 set(SDL_SHARED OFF)
@@ -70,6 +93,7 @@ target_include_directories(voxel-engine PRIVATE include)
 
 # target_compile_options(voxel-engine PRIVATE -Wall -Wextra -Wno-unused-parameter -fno-elide-type -ftemplate-backtrace-limit=0>)
 # Link to the actual SDL3 library.
-target_link_libraries(voxel-engine PRIVATE SDL3::SDL3 EnTT::EnTT glad OpenGL::GL glm::glm)
+target_link_libraries(voxel-engine PRIVATE SDL3::SDL3 EnTT::EnTT glad OpenGL::GL glm::glm Tracy::TracyClient)
 
 target_compile_options(SDL3-static PRIVATE -Wno-unused-parameter -Wno-deprecated-declarations)
+target_compile_definitions(voxel-engine PRIVATE TRACY_ENABLE)

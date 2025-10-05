@@ -13,7 +13,8 @@ void Engine::Chunk::ChunkData::on_update(entt::registry &registry,
 }
 
 std::shared_ptr<Engine::Chunk::ChunkMesh>
-Engine::Chunk::ChunkData::buildChunkMesh() {
+Engine::Chunk::ChunkData::buildChunkMesh(
+    const ChunkNeighborhood &neighborhood) {
   auto chunkMesh = std::make_shared<ChunkMesh>();
 
   chunkMesh->vertices.clear();
@@ -36,7 +37,47 @@ Engine::Chunk::ChunkData::buildChunkMesh() {
     unsigned int baseIndex =
         static_cast<unsigned int>(chunkMesh->vertices.size());
 
-    if (z == CHUNK_WIDTH - 1 || voxels[getIdx(x, y, z + 1)].type == 0) {
+    bool nFront, nBack, nRight, nLeft, nTop, nBottom;
+    nFront = false;
+    nBack = false;
+    nRight = false;
+    nLeft = false;
+    nTop = false;
+    nBottom = false;
+
+    if (neighborhood.pz) {
+      nFront = neighborhood.pz->voxels[getIdx(x, y, 0)].type != 0;
+    } else {
+      nFront = false;
+    }
+    if (neighborhood.nz) {
+      nBack = neighborhood.nz->voxels[getIdx(x, y, CHUNK_WIDTH - 1)].type != 0;
+    } else {
+      nBack = false;
+    }
+    if (neighborhood.px) {
+      nRight = neighborhood.px->voxels[getIdx(0, y, z)].type != 0;
+    } else {
+      nRight = false;
+    }
+    if (neighborhood.nx) {
+      nLeft = neighborhood.nx->voxels[getIdx(CHUNK_WIDTH - 1, y, z)].type != 0;
+    } else {
+      nLeft = false;
+    }
+    if (neighborhood.py) {
+      nTop = neighborhood.py->voxels[getIdx(x, 0, z)].type != 0;
+    } else {
+      nTop = false;
+    }
+    if (neighborhood.ny) {
+      nBottom =
+          neighborhood.ny->voxels[getIdx(x, CHUNK_WIDTH - 1, z)].type != 0;
+    } else {
+      nBottom = false;
+    }
+
+    if ((z == CHUNK_WIDTH - 1 && !nFront) || getType(x, y, z + 1) == 0) {
       // Front face
       for (int i = 0; i < 6; ++i) {
         if (i < 4) {
@@ -48,7 +89,7 @@ Engine::Chunk::ChunkData::buildChunkMesh() {
       }
       baseIndex += 4;
     }
-    if (z == 0 || voxels[getIdx(x, y, z - 1)].type == 0) {
+    if ((z == 0 && !nBack) || getType(x, y, z - 1) == 0) {
       // Back face
       for (int i = 0; i < 6; ++i) {
         if (i < 4) {
@@ -60,7 +101,7 @@ Engine::Chunk::ChunkData::buildChunkMesh() {
       }
       baseIndex += 4;
     }
-    if (x == CHUNK_WIDTH - 1 || voxels[getIdx(x + 1, y, z)].type == 0) {
+    if ((x == CHUNK_WIDTH - 1 && !nRight) || getType(x + 1, y, z) == 0) {
       // Right face
       for (int i = 0; i < 6; ++i) {
         if (i < 4) {
@@ -72,7 +113,7 @@ Engine::Chunk::ChunkData::buildChunkMesh() {
       }
       baseIndex += 4;
     }
-    if (x == 0 || voxels[getIdx(x - 1, y, z)].type == 0) {
+    if ((x == 0 && !nLeft) || getType(x - 1, y, z) == 0) {
       // Left face
       for (int i = 0; i < 6; ++i) {
         if (i < 4) {
@@ -84,7 +125,7 @@ Engine::Chunk::ChunkData::buildChunkMesh() {
       }
       baseIndex += 4;
     }
-    if (y == CHUNK_WIDTH - 1 || voxels[getIdx(x, y + 1, z)].type == 0) {
+    if ((y == CHUNK_WIDTH - 1 && !nTop) || getType(x, y + 1, z) == 0) {
       // Top face
       for (int i = 0; i < 6; ++i) {
         if (i < 4) {
@@ -96,7 +137,7 @@ Engine::Chunk::ChunkData::buildChunkMesh() {
       }
       baseIndex += 4;
     }
-    if (y == 0 || voxels[getIdx(x, y - 1, z)].type == 0) {
+    if ((y == 0 && !nBottom) || getType(x, y - 1, z) == 0) {
       // Bottom face
       for (int i = 0; i < 6; ++i) {
         if (i < 4) {

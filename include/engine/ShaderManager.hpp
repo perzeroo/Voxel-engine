@@ -3,6 +3,7 @@
 #include "glm/gtc/type_ptr.hpp"
 #include <glad/glad.h>
 #include <string>
+#include <tracy/Tracy.hpp>
 #include <unordered_map>
 
 namespace Engine::Render {

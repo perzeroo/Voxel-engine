@@ -1,8 +1,7 @@
 #pragma once
-#include "glm/glm.hpp"
-#include "entt/entt.hpp"
 #include "engine/Transform.hpp"
-
+#include "entt/entt.hpp"
+#include "glm/glm.hpp"
 
 namespace Engine {
 struct Camera {
@@ -18,11 +17,10 @@ struct CameraController {
   float mouseSensitivity;
 };
 
-}
+} // namespace Engine
 namespace Engine::CameraSystem {
-glm::mat4 update(entt::registry&, float);
+glm::mat4 update(entt::registry &, float);
 }
 namespace Engine::CameraControllerSystem {
-void update(entt::registry&, float dt);
+void update(entt::registry &, float dt);
 }
-

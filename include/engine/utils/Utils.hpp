@@ -24,15 +24,18 @@ inline Camera defaultCamera(float fov = 60.0f) {
   cam.projection = glm::mat4(1.0f);
   return cam;
 }
-inline entt::entity cameraWithControllerEntity(entt::registry& registry) {
+inline entt::entity cameraWithControllerEntity(entt::registry &registry) {
   entt::entity entity = registry.create();
-  Engine::Camera camComponent = Engine::Utils::defaultCamera(60.0f);
+  float fov = 60.0f;
+  Engine::Camera camComponent = Engine::Utils::defaultCamera(fov);
   Engine::Transform camTransform = Engine::Utils::defaultTransform();
   registry.emplace<Engine::Camera>(entity, camComponent);
   registry.emplace<Engine::Transform>(entity, camTransform);
-  registry.emplace<Engine::CameraController>(entity, 0.25f, 0.5f);
+  float mouseSensitivity = 0.1f;
+  float movementSpeed = 0.25f;
+  registry.emplace<Engine::CameraController>(entity, movementSpeed,
+                                             mouseSensitivity);
   return entity;
 }
 
-}
-
+} // namespace Engine::Utils

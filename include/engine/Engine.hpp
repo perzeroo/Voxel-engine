@@ -1,5 +1,6 @@
 #pragma once
 
 namespace Engine {
-  struct Dirty {};
-}
+struct Dirty {};
+struct InUse {};
+} // namespace Engine

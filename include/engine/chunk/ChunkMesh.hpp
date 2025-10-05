@@ -5,6 +5,7 @@
 #include "engine/Render.hpp"
 #include "engine/ShaderManager.hpp"
 #include "engine/chunk/ChunkPosition.hpp"
+#include "entt/entt.hpp"
 #include <glad/glad.h>
 #include <vector>
 
@@ -17,6 +18,7 @@ struct ChunkMesh {
   GLuint EBO = 0;
   void setupMesh();
   void removeMesh();
+  static void on_destroy(entt::registry &registry, entt::entity entity);
 };
 struct ChunkMeshRenderer {
   Engine::Render::Shader &shader;
@@ -26,13 +28,13 @@ struct ChunkMeshRenderer {
       // mesh.setupMesh();
       return; // Nothing to render
     }
-    shader.use();
+    // shader.use();
     glm::mat4 model =
         glm::translate(glm::mat4(1.0f), glm::vec3(position.x * CHUNK_WIDTH,
                                                   position.y * CHUNK_WIDTH,
                                                   position.z * CHUNK_WIDTH));
     shader.setMat4("u_Model", model);
-    shader.setMat4("u_ViewProjection", viewProjection);
+    // shader.setMat4("u_ViewProjection", viewProjection);
     glBindVertexArray(mesh.VAO);
     glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(mesh.indices.size()),
                    GL_UNSIGNED_INT, 0);

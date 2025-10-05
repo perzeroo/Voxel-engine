@@ -1,82 +1,219 @@
 #include "engine/chunk/ChunkManager.hpp"
 #include "SDL3/SDL_log.h"
+#include "SDL3/SDL_timer.h"
 #include "engine/Engine.hpp"
 #include "engine/ThreadPool.hpp"
 #include "engine/chunk/ChunkData.hpp"
 #include "engine/chunk/ChunkMesh.hpp"
-#include "engine/chunk/ChunkMeshBuilder.hpp"
 #include "engine/chunk/ChunkPosition.hpp"
 #include "engine/world/WorldGenerator.hpp"
+#include <ranges>
+#include <tracy/Tracy.hpp>
 
 entt::entity Engine::Chunk::ChunkManager::createChunk(int x, int y, int z) {
   auto chunkPos = Engine::Chunk::ChunkPosition{x, y, z};
   if (getChunk(chunkPos) != entt::null) {
-    // SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-    //             "Chunk at (%d, %d, %d) already exists", x, y, z);
     return entt::null; // Chunk already exists
   }
 
   entt::entity chunkEntity = m_registry.create();
-  m_registry.emplace<Engine::Chunk::ChunkMeshBuilder>(chunkEntity);
   m_registry.emplace<Engine::Chunk::ChunkMeshRenderer>(
       chunkEntity, Engine::Render::ShaderManager::get("chunk"));
   m_registry.emplace<Engine::Chunk::ChunkPosition>(chunkEntity, chunkPos);
   m_registry.emplace<Engine::Dirty>(chunkEntity);
 
   ThreadPool::getInstance().enqueueTask(
-      [this, chunkEntity]() { addChunkToQueue(chunkEntity); });
+      [this, chunkEntity]() { generateChunkData(chunkEntity); });
 
   m_chunkMap[chunkPos] = chunkEntity;
   return chunkEntity;
 }
 
-void Engine::Chunk::ChunkManager::addChunkToQueue(entt::entity chunkEntity) {
-  // if (!m_registry.all_of<Engine::Chunk::ChunkData>(chunkEntity)) {
-  //   SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-  //               "Entity is not a chunk data entity");
-  //   return;
-  // }
-  auto &chunkPos = m_registry.get<Engine::Chunk::ChunkPosition>(chunkEntity);
+void Engine::Chunk::ChunkManager::generateChunkData(entt::entity chunkEntity) {
+  if (!m_registry.valid(chunkEntity)) {
+    SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                "Attempted to generate data for invalid chunk entity");
+    return;
+  }
+  auto *chunkPos =
+      m_registry.try_get<Engine::Chunk::ChunkPosition>(chunkEntity);
+  if (chunkPos == nullptr) {
+    SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                "Attempted to generate data for chunk entity without position");
+    return;
+  }
   auto chunkData = std::make_shared<Engine::Chunk::ChunkData>();
-  m_worldGenerator.generateChunk(chunkPos.x, chunkPos.y, chunkPos.z,
+  m_worldGenerator.generateChunk(chunkPos->x, chunkPos->y, chunkPos->z,
                                  *chunkData);
-  // m_registry.emplace<Engine::Chunk::ChunkData>(chunkEntity, chunkData);
-  // auto &chunkData = m_registry.get<Engine::Chunk::ChunkData>(chunkEntity);
-  auto chunkUpdate = chunkData->buildChunkMesh();
+
   m_chunkUpdateQueue.enqueue(std::make_shared<Engine::Chunk::ChunkUpdate>(
-      chunkEntity, chunkUpdate, chunkData, true));
+      chunkEntity, nullptr, chunkData));
+}
+
+void Engine::Chunk::ChunkManager::buildChunkMeshes() {
+  ZoneScoped;
+  auto view = m_registry.view<Engine::Dirty, Engine::Chunk::ChunkPosition,
+                              Engine::Chunk::ChunkData>();
+  for (auto entity : view) {
+    auto &chunkPos = view.get<Engine::Chunk::ChunkPosition>(entity);
+
+    ChunkNeighborhood neighborhood;
+    neighborhood.px = nullptr;
+    neighborhood.nx = nullptr;
+    neighborhood.py = nullptr;
+    neighborhood.ny = nullptr;
+    neighborhood.pz = nullptr;
+    neighborhood.nz = nullptr;
+
+    entt::entity neighborEntity;
+
+    neighborEntity = getChunk(
+        Engine::Chunk::ChunkPosition{chunkPos.x + 1, chunkPos.y, chunkPos.z});
+    if (neighborEntity != entt::null &&
+        m_registry.all_of<ChunkData>(neighborEntity)) {
+      neighborhood.px =
+          &m_registry.get<Engine::Chunk::ChunkData>(neighborEntity);
+    }
+
+    neighborEntity = getChunk(
+        Engine::Chunk::ChunkPosition{chunkPos.x - 1, chunkPos.y, chunkPos.z});
+    if (neighborEntity != entt::null &&
+        m_registry.all_of<ChunkData>(neighborEntity)) {
+      neighborhood.nx =
+          &m_registry.get<Engine::Chunk::ChunkData>(neighborEntity);
+    }
+
+    neighborEntity = getChunk(
+        Engine::Chunk::ChunkPosition{chunkPos.x, chunkPos.y + 1, chunkPos.z});
+    if (neighborEntity != entt::null &&
+        m_registry.all_of<ChunkData>(neighborEntity)) {
+      neighborhood.py =
+          &m_registry.get<Engine::Chunk::ChunkData>(neighborEntity);
+    }
+
+    neighborEntity = getChunk(
+        Engine::Chunk::ChunkPosition{chunkPos.x, chunkPos.y - 1, chunkPos.z});
+    if (neighborEntity != entt::null &&
+        m_registry.all_of<ChunkData>(neighborEntity)) {
+      neighborhood.ny =
+          &m_registry.get<Engine::Chunk::ChunkData>(neighborEntity);
+    }
+
+    neighborEntity = getChunk(
+        Engine::Chunk::ChunkPosition{chunkPos.x, chunkPos.y, chunkPos.z + 1});
+    if (neighborEntity != entt::null &&
+        m_registry.all_of<ChunkData>(neighborEntity)) {
+      neighborhood.pz =
+          &m_registry.get<Engine::Chunk::ChunkData>(neighborEntity);
+    }
+
+    neighborEntity = getChunk(
+        Engine::Chunk::ChunkPosition{chunkPos.x, chunkPos.y, chunkPos.z - 1});
+    if (neighborEntity != entt::null &&
+        m_registry.all_of<ChunkData>(neighborEntity)) {
+      neighborhood.nz =
+          &m_registry.get<Engine::Chunk::ChunkData>(neighborEntity);
+    }
+    ThreadPool::getInstance().enqueueTask([this, entity, neighborhood]() {
+      buildChunkMesh(entity, neighborhood);
+    });
+  }
+}
+
+void Engine::Chunk::ChunkManager::buildChunkMesh(
+    entt::entity chunkEntity, const ChunkNeighborhood &neighborhood) {
+  auto &chunkPos = m_registry.get<Engine::Chunk::ChunkPosition>(chunkEntity);
+  auto &chunkData = m_registry.get<Engine::Chunk::ChunkData>(chunkEntity);
+
+  auto chunkUpdate = chunkData.buildChunkMesh(neighborhood);
+  m_chunkUpdateQueue.enqueue(std::make_shared<Engine::Chunk::ChunkUpdate>(
+      chunkEntity, chunkUpdate, nullptr));
 }
 
 void Engine::Chunk::ChunkManager::processChunkUpdates() {
+  ZoneScoped;
   std::shared_ptr<Engine::Chunk::ChunkUpdate> chunkUpdate;
+
+  m_chunksUpdatedThisFrame = 0;
+  unsigned int currentUpdateTime = SDL_GetTicks();
+
   while (m_chunkUpdateQueue.try_dequeue(chunkUpdate)) {
     if (!m_registry.valid(chunkUpdate->entity)) {
       continue; // Entity no longer exists
     }
-    if (!m_registry.all_of<Engine::Chunk::ChunkMeshRenderer>(
-            chunkUpdate->entity)) {
-      continue; // Entity is not a chunk mesh renderer entity
-    }
-    chunkUpdate->newMesh->setupMesh();
-    m_registry.emplace_or_replace<Engine::Chunk::ChunkMesh>(
-        chunkUpdate->entity, *(chunkUpdate->newMesh));
-    if (chunkUpdate->updateData) {
-      m_registry.emplace_or_replace<Engine::Chunk::ChunkData>(
-          chunkUpdate->entity, *(chunkUpdate->newData));
+    m_registry.remove<Engine::Dirty>(chunkUpdate->entity);
+    if (chunkUpdate->lastUpdateTime == currentUpdateTime) {
+      m_chunkUpdateQueue.enqueue(chunkUpdate);
+      return;
     }
 
-    m_registry.remove<Engine::Dirty>(chunkUpdate->entity);
+    if (chunkUpdate->newMesh != nullptr) {
+      m_chunksUpdatedThisFrame++;
+      if (m_chunksUpdatedThisFrame > m_maxChunkUpdatesPerFrame) {
+        // Re-enqueue for next frame
+        chunkUpdate->lastUpdateTime = currentUpdateTime;
+        m_chunkUpdateQueue.enqueue(chunkUpdate);
+
+        continue;
+      } else {
+
+        auto &chunkMesh =
+            m_registry.emplace_or_replace<Engine::Chunk::ChunkMesh>(
+                chunkUpdate->entity, std::move(chunkUpdate->newMesh->vertices),
+                std::move(chunkUpdate->newMesh->indices));
+        chunkMesh.setupMesh();
+      }
+    }
+
+    if (chunkUpdate->newData != nullptr) {
+      // ZoneScopedN("ProcessChunkUpdates - UpdateData");
+      m_registry.emplace_or_replace<Engine::Chunk::ChunkData>(
+          chunkUpdate->entity, *(chunkUpdate->newData));
+      if (m_registry.all_of<ChunkPosition>(chunkUpdate->entity)) {
+        auto &chunkPos =
+            m_registry.get<Engine::Chunk::ChunkPosition>(chunkUpdate->entity);
+        for (const auto &neighborPos : chunkPos.neighbors()) {
+          tryAddChunkToBuildQueue(neighborPos);
+        }
+      }
+    }
   }
+}
+
+void Engine::Chunk::ChunkManager::tryAddChunkToBuildQueue(ChunkPosition pos) {
+  entt::entity chunkEntity = getChunk(pos);
+  if (chunkEntity == entt::null || !m_registry.valid(chunkEntity)) {
+    return; // Chunk does not exist
+  }
+  if (!m_registry.all_of<Engine::Chunk::ChunkData>(chunkEntity)) {
+    return; // Chunk data not generated yet
+  }
+  if (m_registry.all_of<Engine::Dirty>(chunkEntity)) {
+    return; // Chunk is already dirty
+  }
+  m_registry.emplace<Engine::Dirty>(chunkEntity);
 }
 
 void Engine::Chunk::ChunkManager::deleteOldChunks(int playerX, int playerZ,
                                                   int radius) {
+  ZoneScoped;
   std::vector<Engine::Chunk::ChunkPosition> chunksToDelete;
   for (const auto &pair : m_chunkMap) {
     const auto &chunkPos = pair.first;
     int dx = chunkPos.x - playerX;
     int dz = chunkPos.z - playerZ;
-    if (dx * dx + dz * dz > radius * radius) {
+    // if (dx * dx + dz * dz > radius * radius) {
+    //   chunksToDelete.push_back(chunkPos);
+    // }
+
+    if (abs(dx) > radius || abs(dz) > radius) {
+      for (const auto &neighborPos : chunkPos.neighbors()) {
+        entt::entity neighborEntity = getChunk(neighborPos);
+        if (neighborEntity != entt::null && m_registry.valid(neighborEntity) &&
+            m_registry.all_of<Engine::Dirty>(neighborEntity)) {
+          continue;
+        }
+      }
       chunksToDelete.push_back(chunkPos);
     }
   }
@@ -89,12 +226,25 @@ void Engine::Chunk::ChunkManager::deleteOldChunks(int playerX, int playerZ,
 void Engine::Chunk::ChunkManager::deleteChunk(int x, int y, int z) {
   auto chunkPos = Engine::Chunk::ChunkPosition{x, y, z};
   entt::entity chunkEntity = getChunk(chunkPos);
-  if (chunkEntity == entt::null) {
+  if (chunkEntity == entt::null || !m_registry.valid(chunkEntity)) {
     SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
                 "Chunk at (%d, %d, %d) does not exist", x, y, z);
     return; // Chunk does not exist
   }
+  if (m_registry.all_of<Engine::Dirty>(chunkEntity)) {
+    return; // Chunk is dirty, skip deletion
+  }
 
   m_registry.destroy(chunkEntity);
   m_chunkMap.erase(chunkPos);
+}
+
+void Engine::Chunk::ChunkManager::loadNewChunks(ChunkPosition playerPos,
+                                                int renderDistance) {
+  ZoneScoped;
+  for (int x = -renderDistance; x < renderDistance; x++) {
+    for (int z = -renderDistance; z < renderDistance; z++) {
+      createChunk(x + playerPos.x, 0, z + playerPos.z);
+    }
+  }
 }

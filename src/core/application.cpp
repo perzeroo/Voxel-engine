@@ -12,6 +12,7 @@
 #include "engine/utils/Utils.hpp"
 #include <core/Application.hpp>
 #include <memory>
+#include <tracy/Tracy.hpp>
 
 namespace Core {
 Application::Application(SDL_Window *win, SDL_GLContext &context)
@@ -46,35 +47,30 @@ void Application::start() {
 }
 
 void Application::update() {
+  ZoneScopedN("Application::update");
   m_last = m_now;
   m_now = SDL_GetPerformanceCounter();
-  // m_now = SDL_GetTicks();
   float dt =
       static_cast<double>(m_now - m_last) / SDL_GetPerformanceFrequency();
-  // static_cast<float>(m_now - m_last) / 1000.0f;
+
   Engine::CameraControllerSystem::update(m_registry, dt);
+
   m_chunkManager->processChunkUpdates();
+  m_chunkManager->buildChunkMeshes();
 
   if (m_activeCamera == entt::null) {
     return;
   }
-  auto playerPosition =
-      m_registry.get<Engine::Transform>(m_activeCamera).position;
-  Engine::Chunk::ChunkPosition playerChunkPos = {
-      static_cast<int>(floor(playerPosition.x / CHUNK_WIDTH)),
-      static_cast<int>(floor(playerPosition.y / CHUNK_WIDTH)),
-      static_cast<int>(floor(playerPosition.z / CHUNK_WIDTH))};
-  auto renderDistance = 8;
+
+  auto playerChunkPos =
+      m_registry.get<Engine::Transform>(m_activeCamera).getChunkPosition();
+
+  auto renderDistance = 16;
+
   m_chunkManager->deleteOldChunks(playerChunkPos.x, playerChunkPos.z,
-                                  renderDistance * 2);
-  unsigned int now = SDL_GetTicks();
-  for (int x = -renderDistance; x < renderDistance; x++) {
-    for (int z = -renderDistance; z < renderDistance; z++) {
-      m_chunkManager->createChunk(x + playerChunkPos.x, 0,
-                                  z + playerChunkPos.z);
-    }
-  }
-  SDL_Log("Create chunks took %u ms", SDL_GetTicks() - now);
+                                  renderDistance);
+
+  m_chunkManager->loadNewChunks(playerChunkPos, renderDistance);
 }
 
 void Application::handleEvents(SDL_Event *event) {
@@ -100,22 +96,33 @@ void Application::handleEvents(SDL_Event *event) {
 }
 
 void Application::render() {
-  clearScreen();
-  glm::mat4 viewProjection = Engine::CameraSystem::update(
-      m_registry, (float)m_width / (float)m_height);
+  {
+    ZoneScopedN("Application::render");
+    clearScreen();
+    glm::mat4 viewProjection = Engine::CameraSystem::update(
+        m_registry, (float)m_width / (float)m_height);
 
-  // GLint vpLoc = glGetUniformLocation(m_shaderProgram, "u_ViewProjection");
-  // glUniformMatrix4fv(vpLoc, 1, GL_FALSE, glm::value_ptr(viewProjection));
+    // GLint vpLoc = glGetUniformLocation(m_shaderProgram, "u_ViewProjection");
+    // glUniformMatrix4fv(vpLoc, 1, GL_FALSE, glm::value_ptr(viewProjection));
 
-  auto view =
-      m_registry
-          .view<Engine::Chunk::ChunkMesh, Engine::Chunk::ChunkMeshRenderer,
-                Engine::Chunk::ChunkPosition>();
-  for (auto entity : view) {
-    auto &mesh = view.get<Engine::Chunk::ChunkMesh>(entity);
-    auto &renderer = view.get<Engine::Chunk::ChunkMeshRenderer>(entity);
-    auto &position = view.get<Engine::Chunk::ChunkPosition>(entity);
-    renderer.render(mesh, position, viewProjection);
+    auto renderedChunksView =
+        m_registry
+            .view<Engine::Chunk::ChunkMesh, Engine::Chunk::ChunkMeshRenderer,
+                  Engine::Chunk::ChunkPosition>();
+
+    const Engine::Render::Shader &chunkShader =
+        Engine::Render::ShaderManager::get("chunk");
+    chunkShader.use();
+    chunkShader.setMat4("u_ViewProjection", viewProjection);
+
+    for (auto entity : renderedChunksView) {
+      auto &mesh = renderedChunksView.get<Engine::Chunk::ChunkMesh>(entity);
+      auto &renderer =
+          renderedChunksView.get<Engine::Chunk::ChunkMeshRenderer>(entity);
+      auto &position =
+          renderedChunksView.get<Engine::Chunk::ChunkPosition>(entity);
+      renderer.render(mesh, position, viewProjection);
+    }
   }
 
   SDL_GL_SwapWindow(m_window);

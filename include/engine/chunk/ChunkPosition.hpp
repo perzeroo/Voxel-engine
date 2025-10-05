@@ -2,6 +2,7 @@
 #include "core/Common.hpp"
 #include "glm/fwd.hpp"
 #include "glm/glm.hpp"
+#include <array>
 #include <functional>
 
 namespace Engine::Chunk {
@@ -11,6 +12,11 @@ struct ChunkPosition {
   int z = 0;
   glm::vec3 toWorldPosition() const {
     return glm::vec3(x * CHUNK_WIDTH, y * CHUNK_WIDTH, z * CHUNK_WIDTH);
+  }
+  std::array<ChunkPosition, 6> neighbors() const {
+    return {ChunkPosition{x + 1, y, z}, ChunkPosition{x - 1, y, z},
+            ChunkPosition{x, y + 1, z}, ChunkPosition{x, y - 1, z},
+            ChunkPosition{x, y, z + 1}, ChunkPosition{x, y, z - 1}};
   }
   bool operator==(const ChunkPosition &other) const {
     return x == other.x && y == other.y && z == other.z;

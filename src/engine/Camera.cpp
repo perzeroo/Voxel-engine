@@ -65,15 +65,13 @@ void update(entt::registry &registry, float dt) {
     auto &cameraController = view.get<const CameraController>(entity);
 
     glm::vec2 mouseDelta = Engine::Input::instance().getMouseDelta();
-    transform.yaw +=
-        mouseDelta.x * cameraController.mouseSensitivity * dt * 100.0f;
+    transform.yaw += mouseDelta.x * cameraController.mouseSensitivity;
     transform.yaw = glm::mod(transform.yaw + 180.0f, 360.0f);
     if (transform.yaw < 0.0f)
       transform.yaw += 360.0f;
     transform.yaw -= 180.0f;
 
-    transform.pitch -=
-        mouseDelta.y * cameraController.mouseSensitivity * dt * 100.0f;
+    transform.pitch -= mouseDelta.y * cameraController.mouseSensitivity;
 
     transform.pitch = glm::clamp(transform.pitch, -89.0f, 89.0f);
 
