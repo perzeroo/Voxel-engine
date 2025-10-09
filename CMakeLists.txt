@@ -88,6 +88,8 @@ src/engine/chunk/ChunkManager.cpp
 src/engine/world/WorldGenerator.cpp
 src/engine/ShaderManager.cpp
 src/engine/ThreadPool.cpp
+src/vendored/imgui_impl_opengl3.cpp
+src/vendored/imgui_impl_sdl3.cpp
 )
 target_include_directories(voxel-engine PRIVATE include)
 

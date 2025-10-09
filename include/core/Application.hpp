@@ -15,7 +15,6 @@ public:
   ~Application();
   SDL_Window *getWindow() const { return m_window; }
   entt::registry &getRegistry() { return m_registry; }
-  void start();
   void update();
   void render();
   void onWindowResize();

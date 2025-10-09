@@ -14,6 +14,7 @@
 #include <memory>
 #include <tracy/Tracy.hpp>
 
+
 namespace Core {
 Application::Application(SDL_Window *win, SDL_GLContext &context)
     : m_chunkManager(
@@ -21,9 +22,7 @@ Application::Application(SDL_Window *win, SDL_GLContext &context)
   m_window = win;
   m_context = context;
   appQuit = SDL_APP_CONTINUE;
-}
 
-void Application::start() {
   glEnable(GL_DEPTH_TEST);
 
   Engine::Render::ShaderManager::load("default", "assets/shaders/basic.vert",
@@ -37,12 +36,6 @@ void Application::start() {
   Engine::Input::instance().init(this);
 
   m_activeCamera = Engine::Utils::cameraWithControllerEntity(m_registry);
-  for (int x = -4; x < 4; x++) {
-    for (int z = -4; z < 4; z++) {
-      m_chunkManager->createChunk(x, 0, z);
-    }
-  }
-
   m_now = SDL_GetPerformanceCounter();
 }
 
@@ -65,7 +58,7 @@ void Application::update() {
   auto playerChunkPos =
       m_registry.get<Engine::Transform>(m_activeCamera).getChunkPosition();
 
-  auto renderDistance = 16;
+  auto renderDistance = 4;
 
   m_chunkManager->deleteOldChunks(playerChunkPos.x, playerChunkPos.z,
                                   renderDistance);

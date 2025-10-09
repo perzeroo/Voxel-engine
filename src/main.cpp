@@ -55,7 +55,6 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
 
   *appstate = new Core::Application(window, context);
   Core::Application *app = (Core::Application *)(*appstate);
-  app->start();
 
   FrameMark;
 

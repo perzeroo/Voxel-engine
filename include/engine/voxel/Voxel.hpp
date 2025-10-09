@@ -4,6 +4,6 @@
 
 namespace Engine::Voxel {
 typedef struct Voxel {
-  uint16_t type;
+  uint8_t type;
 } Voxel;
 }
