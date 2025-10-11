@@ -88,10 +88,15 @@ src/engine/chunk/ChunkManager.cpp
 src/engine/world/WorldGenerator.cpp
 src/engine/ShaderManager.cpp
 src/engine/ThreadPool.cpp
-src/vendored/imgui_impl_opengl3.cpp
-src/vendored/imgui_impl_sdl3.cpp
+vendored/imgui/src/imgui_impl_opengl3.cpp
+vendored/imgui/src/imgui_impl_sdl3.cpp
+vendored/imgui/src/imgui.cpp
+vendored/imgui/src/imgui_draw.cpp
+vendored/imgui/src/imgui_tables.cpp
+vendored/imgui/src/imgui_widgets.cpp
+vendored/imgui/src/imgui_demo.cpp
 )
-target_include_directories(voxel-engine PRIVATE include)
+target_include_directories(voxel-engine PRIVATE include vendored/imgui/include)
 
 # target_compile_options(voxel-engine PRIVATE -Wall -Wextra -Wno-unused-parameter -fno-elide-type -ftemplate-backtrace-limit=0>)
 # Link to the actual SDL3 library.

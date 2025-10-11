@@ -6,10 +6,13 @@
 #include "engine/Input.hpp"
 #include "engine/ShaderManager.hpp"
 #include "engine/Transform.hpp"
+#include "engine/ImGuiHelper.hpp"
 #include "engine/chunk/ChunkManager.hpp"
 #include "engine/chunk/ChunkMesh.hpp"
 #include "engine/chunk/ChunkPosition.hpp"
 #include "engine/utils/Utils.hpp"
+#include "imgui.h"
+#include "imgui_impl_sdl3.h"
 #include <core/Application.hpp>
 #include <memory>
 #include <tracy/Tracy.hpp>
@@ -36,8 +39,20 @@ Application::Application(SDL_Window *win, SDL_GLContext &context)
   Engine::Input::instance().init(this);
 
   m_activeCamera = Engine::Utils::cameraWithControllerEntity(m_registry);
+
+  Engine::ImGuiHelper::init(m_window, m_context);
+
   m_now = SDL_GetPerformanceCounter();
 }
+
+Application::~Application() {
+  auto view = m_registry.view<Engine::Chunk::ChunkMesh>();
+  for (auto entity : view) {
+    m_registry.remove<Engine::Chunk::ChunkMesh>(entity);
+  }
+  Engine::ImGuiHelper::shutdown();
+}
+
 
 void Application::update() {
   ZoneScopedN("Application::update");
@@ -81,16 +96,21 @@ void Application::handleEvents(SDL_Event *event) {
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     } else if (event->key.key == SDLK_M) {
       glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    } else if (event->key.key == SDLK_ESCAPE) {
+        m_windowFocused = !m_windowFocused;
+      SDL_SetWindowRelativeMouseMode(m_window, m_windowFocused);
     }
     break;
   default:
     break;
   }
+  ImGui_ImplSDL3_ProcessEvent(event);
 }
 
 void Application::render() {
   {
     ZoneScopedN("Application::render");
+    Engine::ImGuiHelper::beginFrame();
     clearScreen();
     glm::mat4 viewProjection = Engine::CameraSystem::update(
         m_registry, (float)m_width / (float)m_height);
@@ -107,17 +127,32 @@ void Application::render() {
         Engine::Render::ShaderManager::get("chunk");
     chunkShader.use();
     chunkShader.setMat4("u_ViewProjection", viewProjection);
+    
+    unsigned int totalTriangles = 0;
 
     for (auto entity : renderedChunksView) {
       auto &mesh = renderedChunksView.get<Engine::Chunk::ChunkMesh>(entity);
+      totalTriangles += static_cast<unsigned int>(mesh.indices.size()) / 3;
       auto &renderer =
           renderedChunksView.get<Engine::Chunk::ChunkMeshRenderer>(entity);
       auto &position =
           renderedChunksView.get<Engine::Chunk::ChunkPosition>(entity);
       renderer.render(mesh, position, viewProjection);
     }
+    ImGuiIO &io = ImGui::GetIO();
+    std::string sTotalTriangles = "Triangles: " + std::to_string(totalTriangles);
+    ImVec2 size = ImGui::CalcTextSize(sTotalTriangles.c_str());
+    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - size.x - 20, 10));
+    ImGui::SetNextWindowBgAlpha(0.3f); // Transparent background
+    ImGui::Begin("Stats", nullptr,
+                 ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
+                     ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoInputs);
+    ImGui::Text("%s", sTotalTriangles.c_str());
+    ImGui::End();
+    ImGui::ShowDemoWindow();
+    Engine::ImGuiHelper::endFrame();
   }
-
+  
   SDL_GL_SwapWindow(m_window);
 }
 
@@ -127,8 +162,6 @@ void Application::onWindowResize() {
   m_width = w;
   m_height = h;
 }
-
-Application::~Application() {}
 
 void Application::clearScreen() {
   glViewport(0, 0, m_width, m_height);
