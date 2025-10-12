@@ -3,10 +3,10 @@
 #include "SDL3/SDL_log.h"
 #include "SDL3/SDL_timer.h"
 #include "engine/Camera.hpp"
+#include "engine/ImGuiHelper.hpp"
 #include "engine/Input.hpp"
 #include "engine/ShaderManager.hpp"
 #include "engine/Transform.hpp"
-#include "engine/ImGuiHelper.hpp"
 #include "engine/chunk/ChunkManager.hpp"
 #include "engine/chunk/ChunkMesh.hpp"
 #include "engine/chunk/ChunkPosition.hpp"
@@ -17,13 +17,17 @@
 #include <memory>
 #include <tracy/Tracy.hpp>
 
-
 namespace Core {
-Application::Application(SDL_Window *win, SDL_GLContext &context)
+Application::Application()
     : m_chunkManager(
           std::make_unique<Engine::Chunk::ChunkManager>(m_registry)) {
-  m_window = win;
-  m_context = context;
+  SDL_SetAppMetadata("Voxel Engine", "1.0", "me.perzero.voxel-engine");
+
+  if (*m_window == nullptr) {
+    SDL_Log("Couldn't create window");
+    appQuit = SDL_APP_FAILURE;
+    return;
+  }
   appQuit = SDL_APP_CONTINUE;
 
   glEnable(GL_DEPTH_TEST);
@@ -32,15 +36,13 @@ Application::Application(SDL_Window *win, SDL_GLContext &context)
                                       "assets/shaders/basic.frag");
   Engine::Render::ShaderManager::load("chunk", "assets/shaders/chunk.vert",
                                       "assets/shaders/chunk.frag");
-  onWindowResize();
+  m_window.setMouseFocus(true);
 
-  SDL_SetWindowRelativeMouseMode(m_window, true);
-  m_windowFocused = true;
   Engine::Input::instance().init(this);
 
   m_activeCamera = Engine::Utils::cameraWithControllerEntity(m_registry);
 
-  Engine::ImGuiHelper::init(m_window, m_context);
+  Engine::ImGuiHelper::init(*m_window, m_window.getGLContext());
 
   m_now = SDL_GetPerformanceCounter();
 }
@@ -52,7 +54,6 @@ Application::~Application() {
   }
   Engine::ImGuiHelper::shutdown();
 }
-
 
 void Application::update() {
   ZoneScopedN("Application::update");
@@ -73,23 +74,17 @@ void Application::update() {
   auto playerChunkPos =
       m_registry.get<Engine::Transform>(m_activeCamera).getChunkPosition();
 
-  auto renderDistance = 4;
-
   m_chunkManager->deleteOldChunks(playerChunkPos.x, playerChunkPos.z,
-                                  renderDistance);
+                                  m_renderDistance);
 
-  m_chunkManager->loadNewChunks(playerChunkPos, renderDistance);
+  m_chunkManager->loadNewChunks(playerChunkPos, m_renderDistance);
 }
 
 void Application::handleEvents(SDL_Event *event) {
+  m_window.handleEvent(event);
   switch (event->type) {
-  case SDL_EVENT_WINDOW_FOCUS_GAINED:
-    m_windowFocused = true;
-    SDL_SetWindowRelativeMouseMode(m_window, true);
-    break;
-  case SDL_EVENT_WINDOW_FOCUS_LOST:
-    m_windowFocused = false;
-    SDL_SetWindowRelativeMouseMode(m_window, false);
+  case SDL_EVENT_QUIT:
+    appQuit = SDL_APP_SUCCESS;
     break;
   case SDL_EVENT_KEY_DOWN:
     if (event->key.key == SDLK_N) {
@@ -97,8 +92,7 @@ void Application::handleEvents(SDL_Event *event) {
     } else if (event->key.key == SDLK_M) {
       glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     } else if (event->key.key == SDLK_ESCAPE) {
-        m_windowFocused = !m_windowFocused;
-      SDL_SetWindowRelativeMouseMode(m_window, m_windowFocused);
+      m_window.toggleMouseFocus();
     }
     break;
   default:
@@ -112,8 +106,8 @@ void Application::render() {
     ZoneScopedN("Application::render");
     Engine::ImGuiHelper::beginFrame();
     clearScreen();
-    glm::mat4 viewProjection = Engine::CameraSystem::update(
-        m_registry, (float)m_width / (float)m_height);
+    glm::mat4 viewProjection =
+        Engine::CameraSystem::update(m_registry, m_window.getAspectRatio());
 
     // GLint vpLoc = glGetUniformLocation(m_shaderProgram, "u_ViewProjection");
     // glUniformMatrix4fv(vpLoc, 1, GL_FALSE, glm::value_ptr(viewProjection));
@@ -127,7 +121,7 @@ void Application::render() {
         Engine::Render::ShaderManager::get("chunk");
     chunkShader.use();
     chunkShader.setMat4("u_ViewProjection", viewProjection);
-    
+
     unsigned int totalTriangles = 0;
 
     for (auto entity : renderedChunksView) {
@@ -139,32 +133,41 @@ void Application::render() {
           renderedChunksView.get<Engine::Chunk::ChunkPosition>(entity);
       renderer.render(mesh, position, viewProjection);
     }
-    ImGuiIO &io = ImGui::GetIO();
-    std::string sTotalTriangles = "Triangles: " + std::to_string(totalTriangles);
-    ImVec2 size = ImGui::CalcTextSize(sTotalTriangles.c_str());
-    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - size.x - 20, 10));
-    ImGui::SetNextWindowBgAlpha(0.3f); // Transparent background
-    ImGui::Begin("Stats", nullptr,
-                 ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
-                     ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoInputs);
-    ImGui::Text("%s", sTotalTriangles.c_str());
-    ImGui::End();
-    ImGui::ShowDemoWindow();
+    std::string sTotalTriangles =
+        "Triangles: " + std::to_string(totalTriangles);
+    renderTopRightInfo(sTotalTriangles);
+    renderDebugSettingsWindow();
     Engine::ImGuiHelper::endFrame();
   }
-  
-  SDL_GL_SwapWindow(m_window);
+
+  m_window.swapBuffers();
 }
 
-void Application::onWindowResize() {
-  int w, h;
-  SDL_GetWindowSize(m_window, &w, &h);
-  m_width = w;
-  m_height = h;
+void Application::renderDebugSettingsWindow() {
+  ImGui::Begin("Settings");
+  ImGui::Text("Render Distance");
+  if (ImGui::SliderInt("##RenderDistance", &m_renderDistance, 1, 32)) {
+    // m_chunkManager->forceChunkReload();
+  }
+  ImGui::End();
+}
+
+void Application::renderTopRightInfo(const std::string &info) {
+  ImGuiIO &io = ImGui::GetIO();
+  ImVec2 size = ImGui::CalcTextSize(info.c_str());
+  ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - size.x - 25, 10));
+  ImGui::SetNextWindowBgAlpha(0.3f); // Transparent background
+  ImGui::Begin(
+      "Info", nullptr,
+      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
+          ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav |
+          ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoInputs);
+  ImGui::Text("%s", info.c_str());
+  ImGui::End();
 }
 
 void Application::clearScreen() {
-  glViewport(0, 0, m_width, m_height);
+  glViewport(0, 0, m_window.getWidth(), m_window.getHeight());
   glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }

@@ -78,6 +78,7 @@ find_package(OpenGL REQUIRED)
 add_executable(voxel-engine WIN32 
 src/main.cpp
 src/core/Application.cpp
+src/core/Window.cpp
 src/engine/Camera.cpp
 src/engine/chunk/ChunkMeshBuilder.cpp
 src/engine/chunk/ChunkMesh.cpp
