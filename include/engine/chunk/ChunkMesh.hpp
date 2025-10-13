@@ -16,6 +16,7 @@ struct ChunkMesh {
   GLuint VAO = 0;
   GLuint VBO = 0;
   GLuint EBO = 0;
+  GLsizei indicesSize = 0;
   void setupMesh();
   void removeMesh();
   static void on_destroy(entt::registry &registry, entt::entity entity);
@@ -24,7 +25,7 @@ struct ChunkMeshRenderer {
   Engine::Render::Shader &shader;
   void render(ChunkMesh &mesh, const ChunkPosition &position,
               const glm::mat4 &viewProjection) {
-    if (mesh.VAO == 0 || mesh.indices.empty()) {
+    if (mesh.VAO == 0) {
       // mesh.setupMesh();
       return; // Nothing to render
     }
@@ -36,7 +37,7 @@ struct ChunkMeshRenderer {
     shader.setMat4("u_Model", model);
     // shader.setMat4("u_ViewProjection", viewProjection);
     glBindVertexArray(mesh.VAO);
-    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(mesh.indices.size()),
+    glDrawElements(GL_TRIANGLES, mesh.indicesSize,
                    GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
   }

@@ -14,11 +14,7 @@ void Engine::Chunk::ChunkData::on_update(entt::registry &registry,
 
 std::shared_ptr<Engine::Chunk::ChunkMesh>
 Engine::Chunk::ChunkData::buildChunkMesh(
-    const ChunkNeighborhood &neighborhood) {
-  auto chunkMesh = std::make_shared<ChunkMesh>();
-
-  chunkMesh->vertices.clear();
-  chunkMesh->indices.clear();
+    const ChunkNeighborhood &neighborhood, ChunkMesh &chunkMesh) {
 
   for (int i = 0; i < CHUNK_SIZE; i++) {
     auto voxel_type = voxels[i].type;
@@ -35,7 +31,7 @@ Engine::Chunk::ChunkData::buildChunkMesh(
     float fz = static_cast<float>(z);
 
     unsigned int baseIndex =
-        static_cast<unsigned int>(chunkMesh->vertices.size());
+        static_cast<unsigned int>(chunkMesh.vertices.size());
 
     bool nFront, nBack, nRight, nLeft, nTop, nBottom;
     nFront = false;
@@ -83,9 +79,9 @@ Engine::Chunk::ChunkData::buildChunkMesh(
         if (i < 4) {
           Render::Vertex vert = Render::FACE_VERTICES[0][i];
           vert.position += glm::vec3(fx, fy, fz);
-          chunkMesh->vertices.push_back(vert);
+          chunkMesh.vertices.push_back(vert);
         }
-        chunkMesh->indices.push_back(Render::FACE_INDICES[0][i] + baseIndex);
+        chunkMesh.indices.push_back(Render::FACE_INDICES[0][i] + baseIndex);
       }
       baseIndex += 4;
     }
@@ -95,9 +91,9 @@ Engine::Chunk::ChunkData::buildChunkMesh(
         if (i < 4) {
           Render::Vertex vert = Render::FACE_VERTICES[1][i];
           vert.position += glm::vec3(fx, fy, fz);
-          chunkMesh->vertices.push_back(vert);
+          chunkMesh.vertices.push_back(vert);
         }
-        chunkMesh->indices.push_back(Render::FACE_INDICES[1][i] + baseIndex);
+        chunkMesh.indices.push_back(Render::FACE_INDICES[1][i] + baseIndex);
       }
       baseIndex += 4;
     }
@@ -107,9 +103,9 @@ Engine::Chunk::ChunkData::buildChunkMesh(
         if (i < 4) {
           Render::Vertex vert = Render::FACE_VERTICES[2][i];
           vert.position += glm::vec3(fx, fy, fz);
-          chunkMesh->vertices.push_back(vert);
+          chunkMesh.vertices.push_back(vert);
         }
-        chunkMesh->indices.push_back(Render::FACE_INDICES[2][i] + baseIndex);
+        chunkMesh.indices.push_back(Render::FACE_INDICES[2][i] + baseIndex);
       }
       baseIndex += 4;
     }
@@ -119,9 +115,9 @@ Engine::Chunk::ChunkData::buildChunkMesh(
         if (i < 4) {
           Render::Vertex vert = Render::FACE_VERTICES[3][i];
           vert.position += glm::vec3(fx, fy, fz);
-          chunkMesh->vertices.push_back(vert);
+          chunkMesh.vertices.push_back(vert);
         }
-        chunkMesh->indices.push_back(Render::FACE_INDICES[3][i] + baseIndex);
+        chunkMesh.indices.push_back(Render::FACE_INDICES[3][i] + baseIndex);
       }
       baseIndex += 4;
     }
@@ -131,9 +127,9 @@ Engine::Chunk::ChunkData::buildChunkMesh(
         if (i < 4) {
           Render::Vertex vert = Render::FACE_VERTICES[4][i];
           vert.position += glm::vec3(fx, fy, fz);
-          chunkMesh->vertices.push_back(vert);
+          chunkMesh.vertices.push_back(vert);
         }
-        chunkMesh->indices.push_back(Render::FACE_INDICES[4][i] + baseIndex);
+        chunkMesh.indices.push_back(Render::FACE_INDICES[4][i] + baseIndex);
       }
       baseIndex += 4;
     }
@@ -143,12 +139,12 @@ Engine::Chunk::ChunkData::buildChunkMesh(
         if (i < 4) {
           Render::Vertex vert = Render::FACE_VERTICES[5][i];
           vert.position += glm::vec3(fx, fy, fz);
-          chunkMesh->vertices.push_back(vert);
+          chunkMesh.vertices.push_back(vert);
         }
-        chunkMesh->indices.push_back(Render::FACE_INDICES[5][i] + baseIndex);
+        chunkMesh.indices.push_back(Render::FACE_INDICES[5][i] + baseIndex);
       }
       baseIndex += 4;
     }
   }
-  return chunkMesh;
+  return nullptr;
 }

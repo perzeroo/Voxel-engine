@@ -44,6 +44,7 @@ void Engine::Chunk::ChunkMesh::setupMesh() {
   glEnableVertexAttribArray(1);
 
   glBindVertexArray(0);
+  indicesSize = static_cast<GLsizei>(indices.size());
 }
 
 void Engine::Chunk::ChunkMesh::removeMesh() {

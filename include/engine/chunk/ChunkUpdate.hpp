@@ -5,7 +5,8 @@
 namespace Engine::Chunk {
 struct ChunkUpdate {
   entt::entity entity;
-  std::shared_ptr<ChunkMesh> newMesh;
+  // std::shared_ptr<ChunkMesh> newMesh;
+  bool newMesh;
   std::shared_ptr<ChunkData> newData;
   unsigned int lastUpdateTime = 0;
 };

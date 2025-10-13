@@ -45,7 +45,7 @@ public:
 
   void deleteOldChunks(int playerX, int playerZ, int radius);
   void deleteChunk(int x, int y, int z);
-  void buildChunkMesh(entt::entity chunkEntity,
+  void buildChunkMesh(entt::entity chunkEntity,ChunkMesh& chunkMesh,
                       const ChunkNeighborhood &neighborhood);
   void processChunkUpdates();
   void loadNewChunks(ChunkPosition playerPos, int renderDistance);

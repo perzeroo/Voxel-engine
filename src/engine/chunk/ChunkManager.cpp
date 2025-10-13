@@ -47,7 +47,7 @@ void Engine::Chunk::ChunkManager::generateChunkData(entt::entity chunkEntity) {
                                  *chunkData);
 
   m_chunkUpdateQueue.enqueue(std::make_shared<Engine::Chunk::ChunkUpdate>(
-      chunkEntity, nullptr, chunkData));
+      chunkEntity, false, chunkData));
 }
 
 void Engine::Chunk::ChunkManager::buildChunkMeshes() {
@@ -117,14 +117,17 @@ void Engine::Chunk::ChunkManager::buildChunkMeshes() {
     
     m_registry.remove<Engine::Dirty>(entity);
     m_registry.get_or_emplace<Engine::InUse>(entity);
-    ThreadPool::getInstance().enqueueTask([this, entity, neighborhood]() {
-      buildChunkMesh(entity, neighborhood);
+    auto& chunkMesh = m_registry.get_or_emplace<Engine::Chunk::ChunkMesh>(entity);
+    chunkMesh.vertices.clear();
+    chunkMesh.indices.clear();
+    ThreadPool::getInstance().enqueueTask([this, entity, neighborhood, &chunkMesh]() {
+      buildChunkMesh(entity, chunkMesh, neighborhood);
     });
   }
 }
 
 void Engine::Chunk::ChunkManager::buildChunkMesh(
-    entt::entity chunkEntity, const ChunkNeighborhood &neighborhood) {
+    entt::entity chunkEntity,ChunkMesh& chunkMesh, const ChunkNeighborhood &neighborhood) {
   if (!m_registry.valid(chunkEntity)) {
     SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
                 "Attempted to build mesh for invalid chunk entity");
@@ -133,9 +136,9 @@ void Engine::Chunk::ChunkManager::buildChunkMesh(
   auto &chunkPos = m_registry.get<Engine::Chunk::ChunkPosition>(chunkEntity);
   auto &chunkData = m_registry.get<Engine::Chunk::ChunkData>(chunkEntity);
 
-  auto chunkUpdate = chunkData.buildChunkMesh(neighborhood);
+  auto chunkUpdate = chunkData.buildChunkMesh(neighborhood, chunkMesh);
   m_chunkUpdateQueue.enqueue(std::make_shared<Engine::Chunk::ChunkUpdate>(
-      chunkEntity, chunkUpdate, nullptr));
+      chunkEntity, true, nullptr));
 }
 
 void Engine::Chunk::ChunkManager::processChunkUpdates() {
@@ -147,12 +150,9 @@ void Engine::Chunk::ChunkManager::processChunkUpdates() {
       continue; // Entity no longer exists
     }
 
-    if (chunkUpdate->newMesh != nullptr) {
+    if (chunkUpdate->newMesh == true) {
       auto &chunkMesh =
-        m_registry.emplace_or_replace<Engine::Chunk::ChunkMesh>(
-          chunkUpdate->entity,
-          std::move(chunkUpdate->newMesh->vertices),
-          std::move(chunkUpdate->newMesh->indices));
+        m_registry.get<Engine::Chunk::ChunkMesh>(chunkUpdate->entity);
       chunkMesh.setupMesh();
       m_registry.remove<Engine::InUse>(chunkUpdate->entity);
     }
