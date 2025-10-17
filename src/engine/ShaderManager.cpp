@@ -10,7 +10,10 @@ Engine::Render::Shader::Shader(const char *vertexSource,
   m_programID = Engine::Render::ShaderManager::createShaderProgram(
       vertexCode.c_str(), fragmentCode.c_str());
 }
-Engine::Render::Shader::~Shader() { glDeleteProgram(m_programID); }
+Engine::Render::Shader::~Shader() {
+  SDL_Log("Deleting shader program");
+  glDeleteProgram(m_programID);
+}
 
 GLuint Engine::Render::ShaderManager::compileShader(GLenum type,
                                                     const char *source) {

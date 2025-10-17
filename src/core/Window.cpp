@@ -1,4 +1,6 @@
 #include "core/Window.hpp"
+#include "SDL3/SDL_opengl.h"
+#include "engine/ShaderManager.hpp"
 
 namespace Core {
 Window::Window() {
@@ -75,6 +77,11 @@ void Window::setMouseFocus(bool focus) {
 }
 
 Window::~Window() {
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
+  glUseProgram(0);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glFinish();
   if (m_context) {
     SDL_Log("Destroying GL context");
     SDL_GL_DestroyContext(m_context);
