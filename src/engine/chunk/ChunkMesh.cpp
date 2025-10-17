@@ -61,3 +61,16 @@ void Engine::Chunk::ChunkMesh::removeMesh() {
     VAO = 0;
   }
 }
+
+void Engine::Chunk::ChunkMesh::addFaceFromIndex(int faceIndex, float x, float y,
+                                               float z, Engine::Voxel::Voxel type) {
+  unsigned int baseIndex = static_cast<unsigned int>(vertices.size());
+  for (int i = 0; i < 6; ++i) {
+    if (i < 4) {
+      Render::Vertex vert = Render::FACE_VERTICES[faceIndex][i];
+      vert.position += glm::vec3(x, y, z);
+      vertices.push_back(vert);
+    }
+    indices.push_back(Render::FACE_INDICES[faceIndex][i] + baseIndex);
+  }
+}

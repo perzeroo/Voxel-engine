@@ -34,116 +34,56 @@ Engine::Chunk::ChunkData::buildChunkMesh(
         static_cast<unsigned int>(chunkMesh.vertices.size());
 
     bool nFront, nBack, nRight, nLeft, nTop, nBottom;
-    nFront = false;
-    nBack = false;
-    nRight = false;
-    nLeft = false;
-    nTop = false;
-    nBottom = false;
+    nFront = true;
+    nBack = true;
+    nRight = true;
+    nLeft = true;
+    nTop = true;
+    nBottom = true;
 
     if (neighborhood.pz) {
       nFront = neighborhood.pz->voxels[getIdx(x, y, 0)].type != 0;
-    } else {
-      nFront = false;
     }
     if (neighborhood.nz) {
       nBack = neighborhood.nz->voxels[getIdx(x, y, CHUNK_WIDTH - 1)].type != 0;
-    } else {
-      nBack = false;
     }
     if (neighborhood.px) {
       nRight = neighborhood.px->voxels[getIdx(0, y, z)].type != 0;
-    } else {
-      nRight = false;
     }
     if (neighborhood.nx) {
       nLeft = neighborhood.nx->voxels[getIdx(CHUNK_WIDTH - 1, y, z)].type != 0;
-    } else {
-      nLeft = false;
     }
     if (neighborhood.py) {
       nTop = neighborhood.py->voxels[getIdx(x, 0, z)].type != 0;
-    } else {
-      nTop = false;
     }
     if (neighborhood.ny) {
       nBottom =
           neighborhood.ny->voxels[getIdx(x, CHUNK_WIDTH - 1, z)].type != 0;
-    } else {
-      nBottom = false;
     }
 
     if ((z == CHUNK_WIDTH - 1 && !nFront) || getType(x, y, z + 1) == 0) {
       // Front face
-      for (int i = 0; i < 6; ++i) {
-        if (i < 4) {
-          Render::Vertex vert = Render::FACE_VERTICES[0][i];
-          vert.position += glm::vec3(fx, fy, fz);
-          chunkMesh.vertices.push_back(vert);
-        }
-        chunkMesh.indices.push_back(Render::FACE_INDICES[0][i] + baseIndex);
-      }
-      baseIndex += 4;
+      chunkMesh.addFaceFromIndex(0, fx, fy, fz, voxels[i]);
     }
     if ((z == 0 && !nBack) || getType(x, y, z - 1) == 0) {
       // Back face
-      for (int i = 0; i < 6; ++i) {
-        if (i < 4) {
-          Render::Vertex vert = Render::FACE_VERTICES[1][i];
-          vert.position += glm::vec3(fx, fy, fz);
-          chunkMesh.vertices.push_back(vert);
-        }
-        chunkMesh.indices.push_back(Render::FACE_INDICES[1][i] + baseIndex);
-      }
-      baseIndex += 4;
+      chunkMesh.addFaceFromIndex(1, fx, fy, fz, voxels[i]);
     }
     if ((x == CHUNK_WIDTH - 1 && !nRight) || getType(x + 1, y, z) == 0) {
       // Right face
-      for (int i = 0; i < 6; ++i) {
-        if (i < 4) {
-          Render::Vertex vert = Render::FACE_VERTICES[2][i];
-          vert.position += glm::vec3(fx, fy, fz);
-          chunkMesh.vertices.push_back(vert);
-        }
-        chunkMesh.indices.push_back(Render::FACE_INDICES[2][i] + baseIndex);
-      }
-      baseIndex += 4;
+      chunkMesh.addFaceFromIndex(2, fx, fy, fz, voxels[i]);
     }
     if ((x == 0 && !nLeft) || getType(x - 1, y, z) == 0) {
       // Left face
-      for (int i = 0; i < 6; ++i) {
-        if (i < 4) {
-          Render::Vertex vert = Render::FACE_VERTICES[3][i];
-          vert.position += glm::vec3(fx, fy, fz);
-          chunkMesh.vertices.push_back(vert);
-        }
-        chunkMesh.indices.push_back(Render::FACE_INDICES[3][i] + baseIndex);
-      }
-      baseIndex += 4;
+      chunkMesh.addFaceFromIndex(3, fx, fy, fz, voxels[i]);
     }
     if ((y == CHUNK_WIDTH - 1 && !nTop) || getType(x, y + 1, z) == 0) {
       // Top face
-      for (int i = 0; i < 6; ++i) {
-        if (i < 4) {
-          Render::Vertex vert = Render::FACE_VERTICES[4][i];
-          vert.position += glm::vec3(fx, fy, fz);
-          chunkMesh.vertices.push_back(vert);
-        }
-        chunkMesh.indices.push_back(Render::FACE_INDICES[4][i] + baseIndex);
-      }
-      baseIndex += 4;
+      chunkMesh.addFaceFromIndex(4, fx, fy, fz, voxels[i]);
     }
     if ((y == 0 && !nBottom) || getType(x, y - 1, z) == 0) {
       // Bottom face
-      for (int i = 0; i < 6; ++i) {
-        if (i < 4) {
-          Render::Vertex vert = Render::FACE_VERTICES[5][i];
-          vert.position += glm::vec3(fx, fy, fz);
-          chunkMesh.vertices.push_back(vert);
-        }
-        chunkMesh.indices.push_back(Render::FACE_INDICES[5][i] + baseIndex);
-      }
-      baseIndex += 4;
+      chunkMesh.addFaceFromIndex(5, fx, fy, fz, voxels[i]);
     }
   }
   return nullptr;

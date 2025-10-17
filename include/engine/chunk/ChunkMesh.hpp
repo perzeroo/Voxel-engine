@@ -5,6 +5,7 @@
 #include "engine/Render.hpp"
 #include "engine/ShaderManager.hpp"
 #include "engine/chunk/ChunkPosition.hpp"
+#include "engine/voxel/Voxel.hpp"
 #include "entt/entt.hpp"
 #include <glad/glad.h>
 #include <vector>
@@ -19,6 +20,14 @@ struct ChunkMesh {
   GLsizei indicesSize = 0;
   void setupMesh();
   void removeMesh();
+  void addFrontFace(float x, float y, float z, Engine::Voxel::Voxel type);
+  void addBackFace(float x, float y, float z, Engine::Voxel::Voxel type);
+  void addRightFace(float x, float y, float z, Engine::Voxel::Voxel type);
+  void addLeftFace(float x, float y, float z, Engine::Voxel::Voxel type);
+  void addTopFace(float x, float y, float z, Engine::Voxel::Voxel type);
+  void addBottomFace(float x, float y, float z, Engine::Voxel::Voxel type);
+  void addFaceFromIndex(int faceIndex, float x, float y, float z,
+                        Engine::Voxel::Voxel type);
   static void on_destroy(entt::registry &registry, entt::entity entity);
 };
 struct ChunkMeshRenderer {
@@ -26,7 +35,6 @@ struct ChunkMeshRenderer {
   void render(ChunkMesh &mesh, const ChunkPosition &position,
               const glm::mat4 &viewProjection) {
     if (mesh.VAO == 0) {
-      // mesh.setupMesh();
       return; // Nothing to render
     }
     // shader.use();
@@ -35,7 +43,6 @@ struct ChunkMeshRenderer {
                                                   position.y * CHUNK_WIDTH,
                                                   position.z * CHUNK_WIDTH));
     shader.setMat4("u_Model", model);
-    // shader.setMat4("u_ViewProjection", viewProjection);
     glBindVertexArray(mesh.VAO);
     glDrawElements(GL_TRIANGLES, mesh.indicesSize,
                    GL_UNSIGNED_INT, 0);
