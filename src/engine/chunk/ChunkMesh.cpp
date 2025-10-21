@@ -1,5 +1,6 @@
 #include "engine/Render.hpp"
 #include <engine/chunk/ChunkMesh.hpp>
+#include <engine/Texture.hpp>
 
 void Engine::Chunk::ChunkMesh::on_destroy(entt::registry &registry,
                                           entt::entity entity) {
@@ -43,6 +44,10 @@ indices.data(), GL_STATIC_DRAW);
   glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Render::Vertex),
                         (void *)offsetof(Render::Vertex, normal));
   glEnableVertexAttribArray(1);
+  // Vertex texture coords
+  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Render::Vertex),
+                        (void *)offsetof(Render::Vertex, uv));
+  glEnableVertexAttribArray(2);
 
   glBindVertexArray(0);
   indicesSize = static_cast<GLsizei>(indices.size());
@@ -77,7 +82,11 @@ void Engine::Chunk::ChunkMesh::addFaceFromIndex(int faceIndex, float x, float y,
       vert.position = Render::FACE_VERTEX_POSITIONS[faceIndex][i];
       vert.position += glm::vec3(x, y, z);
       vert.normal = Render::FACE_NORMALS[faceIndex];
-      
+      uint8_t tileIndex =
+          Engine::Texture::getTileIndex(type.type, static_cast<Render::FaceDirection>(faceIndex));
+      vert.uv = Engine::Texture::getUV(tileIndex,
+                                       Render::FACE_UV_COORDS[i]);
+
       vertices.push_back(vert);
     }
     indices.push_back(Render::FACE_INDICES[faceIndex][i] + baseIndex);

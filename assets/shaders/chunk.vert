@@ -2,14 +2,15 @@
 
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
+layout (location = 2) in vec2 aUV;
 
-out vec3 vertexColor;
+out vec2 vUV;
 
 uniform mat4 u_Model;
 uniform mat4 u_ViewProjection;
 
 void main() {
     gl_Position = u_ViewProjection * u_Model * vec4(aPos, 1.0);
-    vertexColor = aNormal * 0.5 + 0.5;
+    vUV = aUV;
 }
 

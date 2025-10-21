@@ -28,6 +28,7 @@ private:
   Window m_window;
   entt::entity m_activeCamera = entt::null;
   int m_renderDistance = 8;
+  GLuint m_voxelTextureID = 0;
   void clearScreen();
   void perspective(float fovY, float aspect, float zNear, float zFar,
                    float *matrix);

@@ -89,6 +89,7 @@ src/engine/chunk/ChunkManager.cpp
 src/engine/world/WorldGenerator.cpp
 src/engine/ShaderManager.cpp
 src/engine/ThreadPool.cpp
+src/engine/Texture.cpp
 vendored/imgui/src/imgui_impl_opengl3.cpp
 vendored/imgui/src/imgui_impl_sdl3.cpp
 vendored/imgui/src/imgui.cpp
