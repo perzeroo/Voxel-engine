@@ -34,12 +34,12 @@ Engine::Chunk::ChunkData::buildChunkMesh(
         static_cast<unsigned int>(chunkMesh.vertices.size());
 
     bool nFront, nBack, nRight, nLeft, nTop, nBottom;
-    nFront = true;
-    nBack = true;
-    nRight = true;
-    nLeft = true;
-    nTop = true;
-    nBottom = true;
+    nFront = false;
+    nBack = false;
+    nRight = false;
+    nLeft = false;
+    nTop = false;
+    nBottom = false;
 
     if (neighborhood.pz) {
       nFront = neighborhood.pz->voxels[getIdx(x, y, 0)].type != 0;

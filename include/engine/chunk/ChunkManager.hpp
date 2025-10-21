@@ -27,7 +27,7 @@ public:
     Engine::Chunk::ChunkPosition chunkPos = {x / 16, y / 16, z / 16};
     entt::entity chunkEntity = getChunk(chunkPos);
     if (chunkEntity == entt::null) {
-      return {0};
+      return {Voxel::VoxelType::Air};
     }
     auto &chunkData = m_registry.get<Engine::Chunk::ChunkData>(chunkEntity);
     int localX = x % 32;
@@ -35,7 +35,7 @@ public:
     int localZ = z % 32;
     int index = Engine::Chunk::getIdx(localX, localY, localZ);
     if (index < 0 || index >= CHUNK_SIZE) {
-      return {0};
+      return {Voxel::VoxelType::Air};
     }
     return chunkData.voxels[index];
   }

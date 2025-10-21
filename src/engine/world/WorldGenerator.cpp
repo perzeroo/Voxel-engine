@@ -2,6 +2,7 @@
 #include "SDL3/SDL_log.h"
 #include "core/Common.hpp"
 #include "engine/chunk/ChunkData.hpp"
+#include "engine/voxel/Voxel.hpp"
 
 Engine::World::WorldGenerator::WorldGenerator() {
   noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
@@ -17,15 +18,17 @@ void Engine::World::WorldGenerator::generateChunk(
 
       float heightValue = noise.GetNoise((float)worldX, (float)worldZ);
       int height = static_cast<int>((heightValue + 1.0f) * 0.5f *
-                                    32); // Scale to [0, 32]
+                                    31); // Scale to [0, 32]
 
       for (int y = 0; y < CHUNK_WIDTH; y++) {
         int worldY = chunkY * CHUNK_WIDTH + y;
         int index = Chunk::getIdx(x, y, z);
-        if (worldY <= height) {
-          chunkData.voxels[index].type = 1; // Solid block
+        if (worldY < height) {
+          chunkData.voxels[index].type = Voxel::VoxelType::Dirt;
+        } else if (worldY == height) {
+          chunkData.voxels[index].type = Voxel::VoxelType::Grass;
         } else {
-          chunkData.voxels[index].type = 0; // Air
+          chunkData.voxels[index].type = Voxel::VoxelType::Air;
         }
       }
     }

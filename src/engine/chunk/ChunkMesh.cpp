@@ -1,3 +1,4 @@
+#include "engine/Render.hpp"
 #include <engine/chunk/ChunkMesh.hpp>
 
 void Engine::Chunk::ChunkMesh::on_destroy(entt::registry &registry,
@@ -12,7 +13,7 @@ void Engine::Chunk::ChunkMesh::on_destroy(entt::registry &registry,
   }
 }
 
-void Engine::Chunk::ChunkMesh::setupMesh() {
+void Engine::Chunk::ChunkMesh::setupMesh(bool isDirty) {
   removeMesh();
   if (VAO == 0) {
     glGenVertexArrays(1, &VAO);
@@ -32,7 +33,7 @@ void Engine::Chunk::ChunkMesh::setupMesh() {
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int),
-               indices.data(), GL_STATIC_DRAW);
+indices.data(), GL_STATIC_DRAW);
 
   // Vertex positions
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Render::Vertex),
@@ -45,6 +46,10 @@ void Engine::Chunk::ChunkMesh::setupMesh() {
 
   glBindVertexArray(0);
   indicesSize = static_cast<GLsizei>(indices.size());
+  vertices.clear();
+  vertices.shrink_to_fit();
+  indices.clear();
+  indices.shrink_to_fit();
 }
 
 void Engine::Chunk::ChunkMesh::removeMesh() {
@@ -67,8 +72,12 @@ void Engine::Chunk::ChunkMesh::addFaceFromIndex(int faceIndex, float x, float y,
   unsigned int baseIndex = static_cast<unsigned int>(vertices.size());
   for (int i = 0; i < 6; ++i) {
     if (i < 4) {
-      Render::Vertex vert = Render::FACE_VERTICES[faceIndex][i];
+      // Render::Vertex vert = Render::FACE_VERTICES[faceIndex][i];
+      Render::Vertex vert;
+      vert.position = Render::FACE_VERTEX_POSITIONS[faceIndex][i];
       vert.position += glm::vec3(x, y, z);
+      vert.normal = Render::FACE_NORMALS[faceIndex];
+      
       vertices.push_back(vert);
     }
     indices.push_back(Render::FACE_INDICES[faceIndex][i] + baseIndex);

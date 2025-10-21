@@ -18,7 +18,7 @@ struct ChunkMesh {
   GLuint VBO = 0;
   GLuint EBO = 0;
   GLsizei indicesSize = 0;
-  void setupMesh();
+  void setupMesh(bool isDirty = false);
   void removeMesh();
   void addFrontFace(float x, float y, float z, Engine::Voxel::Voxel type);
   void addBackFace(float x, float y, float z, Engine::Voxel::Voxel type);

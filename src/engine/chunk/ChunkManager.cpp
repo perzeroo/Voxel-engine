@@ -151,10 +151,10 @@ void Engine::Chunk::ChunkManager::processChunkUpdates() {
     }
 
     if (chunkUpdate->newMesh == true) {
+      m_registry.remove<Engine::InUse>(chunkUpdate->entity);
       auto &chunkMesh =
         m_registry.get<Engine::Chunk::ChunkMesh>(chunkUpdate->entity);
       chunkMesh.setupMesh();
-      m_registry.remove<Engine::InUse>(chunkUpdate->entity);
     }
 
     if (chunkUpdate->newData != nullptr) {
