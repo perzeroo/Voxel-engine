@@ -4,11 +4,13 @@
 #include "imgui_impl_sdl3.h"
 
 namespace Engine::ImGuiHelper {
-void init(SDL_Window* window, SDL_GLContext& context) {
+void init(SDL_Window *window, SDL_GLContext &context) {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
-  ImGuiIO& io = ImGui::GetIO(); (void)io;
-  io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+  ImGuiIO &io = ImGui::GetIO();
+  (void)io;
+  io.ConfigFlags |=
+      ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
 
   // Setup Dear ImGui style
   ImGui::StyleColorsDark();
@@ -16,7 +18,7 @@ void init(SDL_Window* window, SDL_GLContext& context) {
 
   // Setup Platform/Renderer backends
   ImGui_ImplSDL3_InitForOpenGL(window, context);
-  ImGui_ImplOpenGL3_Init("#version 330");
+  ImGui_ImplOpenGL3_Init("#version 460");
 }
 
 void beginFrame() {

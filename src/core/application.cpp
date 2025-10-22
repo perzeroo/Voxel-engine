@@ -2,7 +2,6 @@
 #include "core/Window.hpp"
 #include "engine/Engine.hpp"
 #include "glm/geometric.hpp"
-#include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_keycode.h"
@@ -50,6 +49,7 @@ Application::Application()
   m_activeCamera = Engine::Utils::cameraWithControllerEntity(m_registry);
 
   Engine::ImGuiHelper::init(*m_window, m_window.getGLContext());
+
   int width, height, channels;
   unsigned char *imageData =
       stbi_load("assets/textures/VoxelSprites.png", &width, &height, &channels,
