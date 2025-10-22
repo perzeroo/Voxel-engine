@@ -24,9 +24,8 @@ struct ChunkNeighborhood {
 struct ChunkData {
   static void on_update(entt::registry &registry, entt::entity entity);
   std::array<Engine::Voxel::Voxel, CHUNK_SIZE> voxels;
-  std::shared_ptr<Engine::Chunk::ChunkMesh>
-  buildChunkMesh(const Engine::Chunk::ChunkNeighborhood &neighborhood,
-                 ChunkMesh &outMesh);
+  bool buildChunkMesh(const Engine::Chunk::ChunkNeighborhood &neighborhood,
+                      std::shared_ptr<ChunkMeshData> outMesh);
   uint16_t getType(int x, int y, int z) const {
     if (x < 0 || x >= CHUNK_WIDTH || y < 0 || y >= CHUNK_WIDTH || z < 0 ||
         z >= CHUNK_WIDTH) {

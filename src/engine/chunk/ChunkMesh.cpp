@@ -28,12 +28,20 @@ void Engine::Chunk::ChunkMesh::setupMesh(bool isDirty) {
   glBindVertexArray(VAO);
 
   glBindBuffer(GL_ARRAY_BUFFER, VBO);
-  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Render::Vertex),
-               vertices.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER,
+               meshData->vertices.size() * sizeof(Render::Vertex),
+               meshData->vertices.data(), GL_STATIC_DRAW);
+  // glBufferData(GL_ARRAY_BUFFER,
+  //              meshData->vertices.size() * sizeof(Render::Vertex), nullptr,
+  //              GL_STATIC_DRAW);
+  // glBufferSubData(GL_ARRAY_BUFFER, 0,
+  //                 meshData->vertices.size() * sizeof(Render::Vertex),
+  //                 meshData->vertices.data());
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int),
-               indices.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+               meshData->indices.size() * sizeof(unsigned int),
+               meshData->indices.data(), GL_STATIC_DRAW);
 
   // Vertex positions
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Render::Vertex),
@@ -49,14 +57,14 @@ void Engine::Chunk::ChunkMesh::setupMesh(bool isDirty) {
   glEnableVertexAttribArray(2);
 
   glBindVertexArray(0);
-  indicesSize = static_cast<GLsizei>(indices.size());
+  indicesSize = static_cast<GLsizei>(meshData->indices.size());
 }
 
 void Engine::Chunk::ChunkMesh::clean() {
-  vertices.clear();
-  vertices.shrink_to_fit();
-  indices.clear();
-  indices.shrink_to_fit();
+  meshData->vertices.clear();
+  meshData->vertices.shrink_to_fit();
+  meshData->indices.clear();
+  meshData->indices.shrink_to_fit();
 }
 
 void Engine::Chunk::ChunkMesh::removeMesh() {
@@ -74,13 +82,13 @@ void Engine::Chunk::ChunkMesh::removeMesh() {
   }
 }
 
-void Engine::Chunk::ChunkMesh::addFaceFromIndex(int faceIndex, float x, float y,
-                                                float z,
-                                                Engine::Voxel::Voxel type) {
+void Engine::Chunk::ChunkMeshData::addFaceFromIndex(int faceIndex, float x,
+                                                    float y, float z,
+                                                    Engine::Voxel::Voxel type) {
   unsigned int baseIndex = static_cast<unsigned int>(vertices.size());
   for (int i = 0; i < 6; ++i) {
     if (i < 4) {
-      // Render::Vertex vert = Render::FACE_VERTICES[faceIndex][i];
+      // Render::Vertex vert = Render::FACE_meshData->vertices[faceIndex][i];
       Render::Vertex vert;
       vert.position = Render::FACE_VERTEX_POSITIONS[faceIndex][i];
       vert.position += glm::vec3(x, y, z);

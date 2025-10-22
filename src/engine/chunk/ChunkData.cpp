@@ -12,10 +12,15 @@ void Engine::Chunk::ChunkData::on_update(entt::registry &registry,
   }
 }
 
-std::shared_ptr<Engine::Chunk::ChunkMesh>
-Engine::Chunk::ChunkData::buildChunkMesh(
-    const ChunkNeighborhood &neighborhood, ChunkMesh &chunkMesh) {
+bool Engine::Chunk::ChunkData::buildChunkMesh(
+    const ChunkNeighborhood &neighborhood,
+    std::shared_ptr<ChunkMeshData> chunkMesh) {
 
+  if (!chunkMesh) {
+    return false;
+  }
+  chunkMesh->vertices.reserve(CHUNK_SIZE * 12);
+  chunkMesh->indices.reserve(CHUNK_SIZE * 18);
   for (int i = 0; i < CHUNK_SIZE; i++) {
     auto voxel_type = voxels[i].type;
     if (voxel_type == 0) {
@@ -31,7 +36,7 @@ Engine::Chunk::ChunkData::buildChunkMesh(
     float fz = static_cast<float>(z);
 
     unsigned int baseIndex =
-        static_cast<unsigned int>(chunkMesh.vertices.size());
+        static_cast<unsigned int>(chunkMesh->vertices.size());
 
     bool nFront, nBack, nRight, nLeft, nTop, nBottom;
     nFront = false;
@@ -63,28 +68,28 @@ Engine::Chunk::ChunkData::buildChunkMesh(
 
     if ((z == CHUNK_WIDTH - 1 && !nFront) || getType(x, y, z + 1) == 0) {
       // Front face
-      chunkMesh.addFaceFromIndex(0, fx, fy, fz, voxels[i]);
+      chunkMesh->addFaceFromIndex(0, fx, fy, fz, voxels[i]);
     }
     if ((z == 0 && !nBack) || getType(x, y, z - 1) == 0) {
       // Back face
-      chunkMesh.addFaceFromIndex(1, fx, fy, fz, voxels[i]);
+      chunkMesh->addFaceFromIndex(1, fx, fy, fz, voxels[i]);
     }
     if ((x == CHUNK_WIDTH - 1 && !nRight) || getType(x + 1, y, z) == 0) {
       // Right face
-      chunkMesh.addFaceFromIndex(2, fx, fy, fz, voxels[i]);
+      chunkMesh->addFaceFromIndex(2, fx, fy, fz, voxels[i]);
     }
     if ((x == 0 && !nLeft) || getType(x - 1, y, z) == 0) {
       // Left face
-      chunkMesh.addFaceFromIndex(3, fx, fy, fz, voxels[i]);
+      chunkMesh->addFaceFromIndex(3, fx, fy, fz, voxels[i]);
     }
     if ((y == CHUNK_WIDTH - 1 && !nTop) || getType(x, y + 1, z) == 0) {
       // Top face
-      chunkMesh.addFaceFromIndex(4, fx, fy, fz, voxels[i]);
+      chunkMesh->addFaceFromIndex(4, fx, fy, fz, voxels[i]);
     }
     if ((y == 0 && !nBottom) || getType(x, y - 1, z) == 0) {
       // Bottom face
-      chunkMesh.addFaceFromIndex(5, fx, fy, fz, voxels[i]);
+      chunkMesh->addFaceFromIndex(5, fx, fy, fz, voxels[i]);
     }
   }
-  return nullptr;
+  return true;
 }

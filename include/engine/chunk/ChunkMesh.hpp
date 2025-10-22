@@ -8,12 +8,20 @@
 #include "engine/voxel/Voxel.hpp"
 #include "entt/entt.hpp"
 #include <glad/glad.h>
+#include <mutex>
 #include <vector>
 
 namespace Engine::Chunk {
-struct ChunkMesh {
+struct ChunkMeshData {
   std::vector<Engine::Render::Vertex> vertices;
   std::vector<unsigned int> indices;
+  void addFaceFromIndex(int faceIndex, float x, float y, float z,
+                        Engine::Voxel::Voxel type);
+};
+struct ChunkMesh {
+  // std::vector<Engine::Render::Vertex> vertices;
+  // std::vector<unsigned int> indices;
+  std::shared_ptr<ChunkMeshData> meshData;
   GLuint VAO = 0;
   GLuint VBO = 0;
   GLuint EBO = 0;

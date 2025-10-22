@@ -118,21 +118,22 @@ void Engine::Chunk::ChunkManager::buildChunkMeshes() {
     }
 
     m_registry.remove<Engine::Dirty>(entity);
-    m_registry.get_or_emplace<Engine::InUse>(entity).addUser();
+    m_registry.emplace<Engine::InUse>(entity).addUser();
     auto &chunkMesh =
         m_registry.get_or_emplace<Engine::Chunk::ChunkMesh>(entity);
     // chunkMesh.vertices.clear();
     // chunkMesh.indices.clear();
+    chunkMesh.meshData = std::make_shared<ChunkMeshData>();
     chunkMesh.clean();
     ThreadPool::getInstance().enqueueTask(
         [this, entity, neighborhood, &chunkMesh]() {
-          buildChunkMesh(entity, chunkMesh, neighborhood);
+          buildChunkMesh(entity, chunkMesh.meshData, neighborhood);
         });
   }
 }
 
 void Engine::Chunk::ChunkManager::buildChunkMesh(
-    entt::entity chunkEntity, ChunkMesh &chunkMesh,
+    entt::entity chunkEntity, std::shared_ptr<ChunkMeshData> chunkMesh,
     const ChunkNeighborhood &neighborhood) {
   if (!m_registry.valid(chunkEntity)) {
     SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
@@ -192,11 +193,12 @@ void Engine::Chunk::ChunkManager::processChunkUpdates() {
       continue; // Entity no longer exists
     }
     auto &inUse = m_registry.get<Engine::InUse>(chunkEntity);
-    if (inUse.removeUser()) {
-      m_registry.remove<Engine::InUse>(chunkEntity);
-    }
     auto &chunkMesh = m_registry.get<Engine::Chunk::ChunkMesh>(chunkEntity);
     chunkMesh.setupMesh();
+    if (inUse.removeUser()) {
+      m_registry.remove<Engine::InUse>(chunkEntity);
+      // chunkMesh.clean();
+    }
     m_chunksSetupThisFrame++;
     if (m_chunksSetupThisFrame >= m_maxChunkSetupsPerFrame) {
       break;
@@ -218,9 +220,13 @@ void Engine::Chunk::ChunkManager::tryAddChunkToBuildQueue(ChunkPosition pos) {
   m_registry.emplace<Engine::Dirty>(chunkEntity);
 }
 
-void Engine::Chunk::ChunkManager::deleteOldChunks(int playerX, int playerZ,
+bool Engine::Chunk::ChunkManager::deleteOldChunks(int playerX, int playerZ,
                                                   int radius) {
   ZoneScoped;
+  auto check = m_registry.view<Engine::InUse>();
+  if (check->size() > 0) {
+    return false; // Some chunks are still in use, skip deletion
+  }
   auto view = m_registry.view<Engine::Chunk::ChunkPosition>();
   std::vector<Engine::Chunk::ChunkPosition> chunksToDelete;
   radius += 1;
@@ -250,6 +256,7 @@ void Engine::Chunk::ChunkManager::deleteOldChunks(int playerX, int playerZ,
   for (const auto &chunkPos : chunksToDelete) {
     deleteChunk(chunkPos.x, chunkPos.y, chunkPos.z);
   }
+  return true;
 }
 
 void Engine::Chunk::ChunkManager::deleteChunk(int x, int y, int z) {

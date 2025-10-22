@@ -93,9 +93,6 @@ void Application::update() {
     Engine::CameraControllerSystem::update(m_registry, dt);
   }
 
-  m_chunkManager->processChunkUpdates();
-  m_chunkManager->buildChunkMeshes();
-
   if (m_activeCamera == entt::null) {
     return;
   }
@@ -103,10 +100,13 @@ void Application::update() {
   auto playerChunkPos =
       m_registry.get<Engine::Transform>(m_activeCamera).getChunkPosition();
 
-  m_chunkManager->deleteOldChunks(playerChunkPos.x, playerChunkPos.z,
-                                  m_renderDistance);
+  m_chunkManager->processChunkUpdates();
+  m_chunkManager->buildChunkMeshes();
 
-  m_chunkManager->loadNewChunks(playerChunkPos, m_renderDistance);
+  auto chunksDeleted = m_chunkManager->deleteOldChunks(
+      playerChunkPos.x, playerChunkPos.z, m_renderDistance);
+  if (chunksDeleted)
+    m_chunkManager->loadNewChunks(playerChunkPos, m_renderDistance);
 }
 
 void Application::handleEvents(SDL_Event *event) {
@@ -159,6 +159,11 @@ void Application::render() {
     auto &camera = m_registry.get<Engine::Camera>(m_activeCamera);
     auto &cameraTransform = m_registry.get<Engine::Transform>(m_activeCamera);
     for (auto entity : renderedChunksView) {
+      auto &mesh = renderedChunksView.get<Engine::Chunk::ChunkMesh>(entity);
+      if (!m_registry.all_of<Engine::Dirty>(entity) &&
+          !m_registry.all_of<Engine::InUse>(entity)) {
+        mesh.clean();
+      }
       auto &position =
           renderedChunksView.get<Engine::Chunk::ChunkPosition>(entity);
       auto fPos = position.toWorldPosition() - cameraTransform.position +
@@ -173,23 +178,28 @@ void Application::render() {
         continue;
       }
 
-      auto &mesh = renderedChunksView.get<Engine::Chunk::ChunkMesh>(entity);
       totalTriangles += static_cast<unsigned int>(mesh.indicesSize);
       totalChunks++;
       auto &renderer =
           renderedChunksView.get<Engine::Chunk::ChunkMeshRenderer>(entity);
       renderer.render(mesh, position, viewProjection);
-
-      if (!m_registry.all_of<Engine::Dirty>(entity) &&
-          !m_registry.all_of<Engine::InUse>(entity)) {
-        mesh.clean();
-      }
     }
     totalTriangles /= 3;
     std::string sTotalTriangles =
         "Triangles: " + std::to_string(totalTriangles);
     std::string sTotalChunks = "Chunks: " + std::to_string(totalChunks);
-    std::string statsString = sTotalTriangles + " | " + sTotalChunks;
+    std::string positionString =
+        "Position: " +
+        std::to_string(
+            m_registry.get<Engine::Transform>(m_activeCamera).position.x) +
+        ", " +
+        std::to_string(
+            m_registry.get<Engine::Transform>(m_activeCamera).position.y) +
+        ", " +
+        std::to_string(
+            m_registry.get<Engine::Transform>(m_activeCamera).position.z);
+    std::string statsString =
+        sTotalTriangles + " | " + sTotalChunks + "\n" + positionString;
     renderTopRightInfo(statsString);
     renderDebugSettingsWindow();
     Engine::ImGuiHelper::endFrame();
@@ -199,10 +209,13 @@ void Application::render() {
 }
 
 void Application::renderDebugSettingsWindow() {
+  auto &cc = m_registry.get<Engine::CameraController>(m_activeCamera);
   ImGui::Begin("Settings");
   ImGui::Text("Render Distance");
   if (ImGui::SliderInt("##RenderDistance", &m_renderDistance, 1, 32)) {
     // m_chunkManager->forceChunkReload();
+  }
+  if (ImGui::SliderFloat("Movement Speed", &cc.movementSpeed, 1.0f, 50.0f)) {
   }
   if (ImGui::ColorEdit3("Sky Color", (float *)&m_skyColor)) {
     // Update sky color

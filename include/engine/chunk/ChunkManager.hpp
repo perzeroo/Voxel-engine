@@ -1,11 +1,13 @@
 #pragma once
 #include "engine/chunk/ChunkData.hpp"
+#include "engine/chunk/ChunkMesh.hpp"
 #include "engine/chunk/ChunkPosition.hpp"
 #include "engine/chunk/ChunkUpdate.hpp"
 #include "engine/voxel/Voxel.hpp"
 #include "engine/world/WorldGenerator.hpp"
 #include "thirdparty/cameron314/concurrentqueue.hpp"
 #include <entt/entt.hpp>
+#include <memory>
 #include <unordered_map>
 
 namespace Engine::Chunk {
@@ -24,7 +26,7 @@ public:
   }
 
   Engine::Voxel::Voxel getBlock(int x, int y, int z) const {
-    Engine::Chunk::ChunkPosition chunkPos = {x / 16, y / 16, z / 16};
+    Engine::Chunk::ChunkPosition chunkPos = {x / 32, y / 32, z / 32};
     entt::entity chunkEntity = getChunk(chunkPos);
     if (chunkEntity == entt::null) {
       return {Voxel::VoxelType::Air};
@@ -43,9 +45,10 @@ public:
   void generateChunkData(entt::entity chunkEntity);
   void buildChunkMeshes();
 
-  void deleteOldChunks(int playerX, int playerZ, int radius);
+  bool deleteOldChunks(int playerX, int playerZ, int radius);
   void deleteChunk(int x, int y, int z);
-  void buildChunkMesh(entt::entity chunkEntity, ChunkMesh &chunkMesh,
+  void buildChunkMesh(entt::entity chunkEntity,
+                      std::shared_ptr<ChunkMeshData> chunkMesh,
                       const ChunkNeighborhood &neighborhood);
   void processChunkUpdates();
   void loadNewChunks(ChunkPosition playerPos, int renderDistance);
@@ -60,7 +63,7 @@ private:
   moodycamel::ConcurrentQueue<std::shared_ptr<Engine::Chunk::ChunkUpdate>>
       m_chunkUpdateQueue;
   moodycamel::ConcurrentQueue<entt::entity> m_chunkSetupQueue;
-  unsigned int m_maxChunkSetupsPerFrame = 8;
+  unsigned int m_maxChunkSetupsPerFrame = 16;
   unsigned int m_chunksSetupThisFrame = 0;
 };
 } // namespace Engine::Chunk
