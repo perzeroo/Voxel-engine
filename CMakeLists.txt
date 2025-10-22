@@ -73,6 +73,7 @@ set(SDL_STATIC ON)
 add_subdirectory(vendored/SDL EXCLUDE_FROM_ALL)
 add_subdirectory(vendored/entt EXCLUDE_FROM_ALL)
 add_subdirectory(vendored/glad)
+add_subdirectory(vendored/spdlog EXCLUDE_FROM_ALL)
 
 
 find_package(OpenGL REQUIRED)
@@ -82,6 +83,7 @@ add_executable(voxel-engine WIN32
 src/main.cpp
 src/core/Application.cpp
 src/core/Window.cpp
+src/core/Log.cpp
 src/engine/Camera.cpp
 src/engine/chunk/ChunkMeshBuilder.cpp
 src/engine/chunk/ChunkMesh.cpp
@@ -105,7 +107,7 @@ target_include_directories(voxel-engine PRIVATE include vendored/imgui/include)
 
 # target_compile_options(voxel-engine PRIVATE -Wall -Wextra -Wno-unused-parameter -fno-elide-type -ftemplate-backtrace-limit=0>)
 # Link to the actual SDL3 library.
-target_link_libraries(voxel-engine PRIVATE SDL3::SDL3 EnTT::EnTT glad OpenGL::GL glm::glm Tracy::TracyClient)
+target_link_libraries(voxel-engine PRIVATE SDL3::SDL3 EnTT::EnTT glad OpenGL::GL glm::glm Tracy::TracyClient spdlog::spdlog_header_only)
 
 target_compile_options(SDL3-static PRIVATE -Wno-unused-parameter -Wno-deprecated-declarations)
 target_compile_definitions(voxel-engine PRIVATE TRACY_ENABLE)

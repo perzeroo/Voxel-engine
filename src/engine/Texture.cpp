@@ -1,5 +1,5 @@
 #include "engine/Texture.hpp"
-#include "SDL3/SDL_log.h"
+#include "core/Log.hpp"
 #include "engine/Render.hpp"
 #include "glm/common.hpp"
 #include "thirdparty/stb/stb_image.hpp"
@@ -43,7 +43,7 @@ Engine::Texture::TextureManager::TextureManager() {
                 4); // 4 = force RGBA
 
   if (!imageData) {
-    SDL_Log("Failed to load texture: assets/textures/VoxelSprites.png");
+    LOG_ERROR("Failed to load texture: assets/textures/VoxelSprites.png");
     m_voxelTextureID = 0;
     return;
   }
@@ -57,9 +57,12 @@ Engine::Texture::TextureManager::TextureManager() {
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                  GL_NEAREST_MIPMAP_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
   stbi_image_free(imageData);
+}
+
+Engine::Texture::TextureManager::~TextureManager() {
+  glDeleteTextures(1, &m_voxelTextureID);
 }

@@ -1,6 +1,6 @@
 #include "engine/chunk/ChunkManager.hpp"
-#include "SDL3/SDL_log.h"
 #include "SDL3/SDL_timer.h"
+#include "core/Log.hpp"
 #include "engine/Engine.hpp"
 #include "engine/ThreadPool.hpp"
 #include "engine/chunk/ChunkData.hpp"
@@ -30,15 +30,13 @@ entt::entity Engine::Chunk::ChunkManager::createChunk(int x, int y, int z) {
 
 void Engine::Chunk::ChunkManager::generateChunkData(entt::entity chunkEntity) {
   if (!m_registry.valid(chunkEntity)) {
-    SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                "Attempted to generate data for invalid chunk entity");
+    LOG_WARN("Attempted to generate data for invalid chunk entity");
     return;
   }
   auto *chunkPos =
       m_registry.try_get<Engine::Chunk::ChunkPosition>(chunkEntity);
   if (chunkPos == nullptr) {
-    SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                "Attempted to generate data for chunk entity without position");
+    LOG_WARN("Attempted to generate data for chunk entity without position");
     return;
   }
   auto chunkData = std::make_shared<Engine::Chunk::ChunkData>();
@@ -263,8 +261,7 @@ void Engine::Chunk::ChunkManager::deleteChunk(int x, int y, int z) {
   auto chunkPos = Engine::Chunk::ChunkPosition{x, y, z};
   entt::entity chunkEntity = getChunk(chunkPos);
   if (chunkEntity == entt::null || !m_registry.valid(chunkEntity)) {
-    SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                "Chunk at (%d, %d, %d) does not exist", x, y, z);
+    LOG_WARN("Chunk at (%d, %d, %d) does not exist", x, y, z);
     return; // Chunk does not exist
   }
   if (m_registry.all_of<Engine::Dirty>(chunkEntity) ||

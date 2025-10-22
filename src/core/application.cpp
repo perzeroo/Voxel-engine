@@ -1,4 +1,5 @@
 #include "core/Common.hpp"
+#include "core/Log.hpp"
 #include "core/Window.hpp"
 #include "engine/Engine.hpp"
 #include "glm/geometric.hpp"
@@ -29,8 +30,10 @@ Application::Application()
           std::make_unique<Engine::Chunk::ChunkManager>(m_registry)) {
   SDL_SetAppMetadata("Voxel Engine", "1.0", "me.perzero.voxel-engine");
 
+  Core::Log::Init();
+  LOG_INFO("Engine starting");
   if (*m_window == nullptr) {
-    SDL_Log("Couldn't create window");
+    LOG_CRITICAL("Couldn't create window");
     appQuit = SDL_APP_FAILURE;
     return;
   }
@@ -50,28 +53,6 @@ Application::Application()
 
   Engine::ImGuiHelper::init(*m_window, m_window.getGLContext());
 
-  int width, height, channels;
-  unsigned char *imageData =
-      stbi_load("assets/textures/VoxelSprites.png", &width, &height, &channels,
-                4); // 4 = force RGBA
-
-  if (!imageData) {
-    appQuit = SDL_APP_FAILURE;
-    return;
-  }
-
-  glGenTextures(1, &m_voxelTextureID);
-  glBindTexture(GL_TEXTURE_2D, m_voxelTextureID);
-
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
-               GL_UNSIGNED_BYTE, imageData);
-
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glGenerateMipmap(GL_TEXTURE_2D);
-  stbi_image_free(imageData);
   m_now = SDL_GetPerformanceCounter();
 }
 
@@ -151,8 +132,7 @@ void Application::render() {
     chunkShader.use();
     chunkShader.setMat4("u_ViewProjection", viewProjection);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, m_voxelTextureID);
+    m_textureManager.useVoxelTexture();
 
     unsigned int totalTriangles = 0;
     unsigned int totalChunks = 0;

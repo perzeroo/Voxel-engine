@@ -18,6 +18,7 @@ public:
   TextureManager &operator=(const TextureManager &) = default;
   ~TextureManager();
   void useVoxelTexture() const {
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_voxelTextureID);
   }
 
