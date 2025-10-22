@@ -1,21 +1,20 @@
 #include "engine/Render.hpp"
-#include <engine/chunk/ChunkMesh.hpp>
 #include <engine/Texture.hpp>
+#include <engine/chunk/ChunkMesh.hpp>
+#include <iostream>
 
 void Engine::Chunk::ChunkMesh::on_destroy(entt::registry &registry,
                                           entt::entity entity) {
   if (registry.all_of<ChunkMesh>(entity)) {
     auto &mesh = registry.get<ChunkMesh>(entity);
     mesh.removeMesh();
-    mesh.vertices.clear();
-    mesh.indices.clear();
-    mesh.vertices.shrink_to_fit();
-    mesh.indices.shrink_to_fit();
+    mesh.clean();
   }
 }
 
 void Engine::Chunk::ChunkMesh::setupMesh(bool isDirty) {
-  removeMesh();
+  // removeMesh();
+  ZoneScoped;
   if (VAO == 0) {
     glGenVertexArrays(1, &VAO);
   }
@@ -34,7 +33,7 @@ void Engine::Chunk::ChunkMesh::setupMesh(bool isDirty) {
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int),
-indices.data(), GL_STATIC_DRAW);
+               indices.data(), GL_STATIC_DRAW);
 
   // Vertex positions
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Render::Vertex),
@@ -51,6 +50,9 @@ indices.data(), GL_STATIC_DRAW);
 
   glBindVertexArray(0);
   indicesSize = static_cast<GLsizei>(indices.size());
+}
+
+void Engine::Chunk::ChunkMesh::clean() {
   vertices.clear();
   vertices.shrink_to_fit();
   indices.clear();
@@ -73,7 +75,8 @@ void Engine::Chunk::ChunkMesh::removeMesh() {
 }
 
 void Engine::Chunk::ChunkMesh::addFaceFromIndex(int faceIndex, float x, float y,
-                                               float z, Engine::Voxel::Voxel type) {
+                                                float z,
+                                                Engine::Voxel::Voxel type) {
   unsigned int baseIndex = static_cast<unsigned int>(vertices.size());
   for (int i = 0; i < 6; ++i) {
     if (i < 4) {
@@ -82,11 +85,19 @@ void Engine::Chunk::ChunkMesh::addFaceFromIndex(int faceIndex, float x, float y,
       vert.position = Render::FACE_VERTEX_POSITIONS[faceIndex][i];
       vert.position += glm::vec3(x, y, z);
       vert.normal = Render::FACE_NORMALS[faceIndex];
-      uint8_t tileIndex =
-          Engine::Texture::getTileIndex(type.type, static_cast<Render::FaceDirection>(faceIndex));
-      vert.uv = Engine::Texture::getUV(tileIndex,
-                                       Render::FACE_UV_COORDS[i]);
-
+      uint8_t tileIndex = Engine::Texture::getTileIndex(
+          type.type, static_cast<Render::FaceDirection>(faceIndex));
+      vert.uv = Engine::Texture::getUV(tileIndex, Render::FACE_UV_COORDS[i]);
+      if (x < 0 || y < 0 || z < 0) {
+        std::cout << "Warning: Negative vertex position detected: ("
+                  << vert.position.x << ", " << vert.position.y << ", "
+                  << vert.position.z << ")\n";
+      }
+      if (x > 31 || y > 31 || z > 31) {
+        std::cout << "Warning: Vertex position exceeds chunk bounds: ("
+                  << vert.position.x << ", " << vert.position.y << ", "
+                  << vert.position.z << ")\n";
+      }
       vertices.push_back(vert);
     }
     indices.push_back(Render::FACE_INDICES[faceIndex][i] + baseIndex);

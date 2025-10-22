@@ -5,6 +5,7 @@
 #include "engine/chunk/ChunkManager.hpp"
 #include "engine/world/WorldGenerator.hpp"
 #include "entt/entt.hpp"
+#include "imgui.h"
 #include <cstdint>
 #include <glad/glad.h>
 
@@ -28,6 +29,7 @@ private:
   Window m_window;
   entt::entity m_activeCamera = entt::null;
   int m_renderDistance = 8;
+  ImColor m_skyColor = ImColor(0.53f, 0.81f, 0.92f);
   GLuint m_voxelTextureID = 0;
   void clearScreen();
   void perspective(float fovY, float aspect, float zNear, float zFar,

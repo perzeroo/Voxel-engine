@@ -28,6 +28,7 @@ struct ChunkMesh {
   void addBottomFace(float x, float y, float z, Engine::Voxel::Voxel type);
   void addFaceFromIndex(int faceIndex, float x, float y, float z,
                         Engine::Voxel::Voxel type);
+  void clean();
   static void on_destroy(entt::registry &registry, entt::entity entity);
 };
 struct ChunkMeshRenderer {
@@ -39,13 +40,10 @@ struct ChunkMeshRenderer {
     }
     // shader.use();
     glm::mat4 model =
-        glm::translate(glm::mat4(1.0f), glm::vec3(position.x * CHUNK_WIDTH,
-                                                  position.y * CHUNK_WIDTH,
-                                                  position.z * CHUNK_WIDTH));
+        glm::translate(glm::mat4(1.0f), position.toWorldPosition());
     shader.setMat4("u_Model", model);
     glBindVertexArray(mesh.VAO);
-    glDrawElements(GL_TRIANGLES, mesh.indicesSize,
-                   GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, mesh.indicesSize, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
   }
 };

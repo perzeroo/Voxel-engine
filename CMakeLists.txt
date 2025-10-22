@@ -5,8 +5,10 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(STATUS "Clang detected, enabling AddressSanitizer")
 
     # Enable AddressSanitizer
-    # add_compile_options(-gcodeview -gdwarf-2 -fsanitize=address -fno-omit-frame-pointer)
-    # add_link_options(-fsanitize=address)
+    # add_compile_options(/fsanitize=address)
+    # add_link_options(/fsanitize=address)
+# set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -gcodeview")
+#   set (CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /DEBUG")
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -14,6 +16,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # This makes sure that the dynamic library goes into the build directory automatically.
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
+
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -106,3 +109,4 @@ target_link_libraries(voxel-engine PRIVATE SDL3::SDL3 EnTT::EnTT glad OpenGL::GL
 
 target_compile_options(SDL3-static PRIVATE -Wno-unused-parameter -Wno-deprecated-declarations)
 target_compile_definitions(voxel-engine PRIVATE TRACY_ENABLE)
+# target_link_options(voxel-engine PRIVATE -fsanitize=address)

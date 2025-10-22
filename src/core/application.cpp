@@ -1,6 +1,9 @@
+#include "core/Common.hpp"
 #include "core/Window.hpp"
+#include "engine/Engine.hpp"
+#include "glm/geometric.hpp"
+#include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
-#include "thirdparty/stb/stb_image.hpp"
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_keycode.h"
 #include "SDL3/SDL_log.h"
@@ -16,6 +19,7 @@
 #include "engine/utils/Utils.hpp"
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
+#include "thirdparty/stb/stb_image.hpp"
 #include <core/Application.hpp>
 #include <memory>
 #include <tracy/Tracy.hpp>
@@ -47,7 +51,9 @@ Application::Application()
 
   Engine::ImGuiHelper::init(*m_window, m_window.getGLContext());
   int width, height, channels;
-  unsigned char* imageData = stbi_load("assets/textures/VoxelSprites.png", &width, &height, &channels, 4); // 4 = force RGBA
+  unsigned char *imageData =
+      stbi_load("assets/textures/VoxelSprites.png", &width, &height, &channels,
+                4); // 4 = force RGBA
 
   if (!imageData) {
     appQuit = SDL_APP_FAILURE;
@@ -83,8 +89,9 @@ void Application::update() {
   m_now = SDL_GetPerformanceCounter();
   float dt =
       static_cast<double>(m_now - m_last) / SDL_GetPerformanceFrequency();
-
-  Engine::CameraControllerSystem::update(m_registry, dt);
+  if (m_window.isFocused()) {
+    Engine::CameraControllerSystem::update(m_registry, dt);
+  }
 
   m_chunkManager->processChunkUpdates();
   m_chunkManager->buildChunkMeshes();
@@ -103,7 +110,6 @@ void Application::update() {
 }
 
 void Application::handleEvents(SDL_Event *event) {
-  m_window.handleEvent(event);
   switch (event->type) {
   case SDL_EVENT_QUIT:
     appQuit = SDL_APP_SUCCESS;
@@ -120,6 +126,7 @@ void Application::handleEvents(SDL_Event *event) {
   default:
     break;
   }
+  m_window.handleEvent(event);
   ImGui_ImplSDL3_ProcessEvent(event);
 }
 
@@ -146,21 +153,44 @@ void Application::render() {
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_voxelTextureID);
-    
-    unsigned int totalTriangles = 0;
 
+    unsigned int totalTriangles = 0;
+    unsigned int totalChunks = 0;
+    auto &camera = m_registry.get<Engine::Camera>(m_activeCamera);
+    auto &cameraTransform = m_registry.get<Engine::Transform>(m_activeCamera);
     for (auto entity : renderedChunksView) {
-      auto &mesh = renderedChunksView.get<Engine::Chunk::ChunkMesh>(entity);
-      totalTriangles += static_cast<unsigned int>(mesh.indices.size()) / 3;
-      auto &renderer =
-          renderedChunksView.get<Engine::Chunk::ChunkMeshRenderer>(entity);
       auto &position =
           renderedChunksView.get<Engine::Chunk::ChunkPosition>(entity);
+      auto fPos = position.toWorldPosition() - cameraTransform.position +
+                  (camera.front * static_cast<float>(CHUNK_WIDTH) / 2.0f);
+      fPos += glm::vec3(static_cast<float>(CHUNK_WIDTH) / 2.0f);
+      auto fPosNorm = glm::normalize(fPos);
+      float dot =
+          glm::dot(camera.front, fPosNorm); // camera.front is normalized
+      // float threshold = cos(glm::radians(60.0f) / 2.0f);
+      float threshold = 0.0f;
+      if (dot < threshold) {
+        continue;
+      }
+
+      auto &mesh = renderedChunksView.get<Engine::Chunk::ChunkMesh>(entity);
+      totalTriangles += static_cast<unsigned int>(mesh.indicesSize);
+      totalChunks++;
+      auto &renderer =
+          renderedChunksView.get<Engine::Chunk::ChunkMeshRenderer>(entity);
       renderer.render(mesh, position, viewProjection);
+
+      if (!m_registry.all_of<Engine::Dirty>(entity) &&
+          !m_registry.all_of<Engine::InUse>(entity)) {
+        mesh.clean();
+      }
     }
+    totalTriangles /= 3;
     std::string sTotalTriangles =
         "Triangles: " + std::to_string(totalTriangles);
-    renderTopRightInfo(sTotalTriangles);
+    std::string sTotalChunks = "Chunks: " + std::to_string(totalChunks);
+    std::string statsString = sTotalTriangles + " | " + sTotalChunks;
+    renderTopRightInfo(statsString);
     renderDebugSettingsWindow();
     Engine::ImGuiHelper::endFrame();
   }
@@ -173,6 +203,9 @@ void Application::renderDebugSettingsWindow() {
   ImGui::Text("Render Distance");
   if (ImGui::SliderInt("##RenderDistance", &m_renderDistance, 1, 32)) {
     // m_chunkManager->forceChunkReload();
+  }
+  if (ImGui::ColorEdit3("Sky Color", (float *)&m_skyColor)) {
+    // Update sky color
   }
   ImGui::End();
 }
@@ -193,7 +226,8 @@ void Application::renderTopRightInfo(const std::string &info) {
 
 void Application::clearScreen() {
   glViewport(0, 0, m_window.getWidth(), m_window.getHeight());
-  glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+  ImColor skyColor = m_skyColor;
+  glClearColor(skyColor.Value.x, skyColor.Value.y, skyColor.Value.z, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 } // namespace Core

@@ -64,16 +64,14 @@ void Window::handleEvent(SDL_Event *event) {
 
 void Window::toggleMouseFocus() {
   m_mouseFocus = !m_mouseFocus;
-  if (m_windowFocused) {
-    SDL_SetWindowRelativeMouseMode(m_window, m_mouseFocus);
-  }
+  SDL_SetWindowRelativeMouseMode(m_window, m_mouseFocus);
+  m_windowFocused = m_mouseFocus;
 }
 
 void Window::setMouseFocus(bool focus) {
   m_mouseFocus = focus;
-  if (m_windowFocused) {
-    SDL_SetWindowRelativeMouseMode(m_window, m_mouseFocus);
-  }
+  SDL_SetWindowRelativeMouseMode(m_window, m_mouseFocus);
+  m_windowFocused = m_mouseFocus;
 }
 
 Window::~Window() {

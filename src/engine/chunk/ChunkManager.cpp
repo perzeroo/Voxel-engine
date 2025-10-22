@@ -7,7 +7,6 @@
 #include "engine/chunk/ChunkMesh.hpp"
 #include "engine/chunk/ChunkPosition.hpp"
 #include "engine/world/WorldGenerator.hpp"
-#include <ranges>
 #include <tracy/Tracy.hpp>
 
 entt::entity Engine::Chunk::ChunkManager::createChunk(int x, int y, int z) {
@@ -20,7 +19,7 @@ entt::entity Engine::Chunk::ChunkManager::createChunk(int x, int y, int z) {
   m_registry.emplace<Engine::Chunk::ChunkMeshRenderer>(
       chunkEntity, Engine::Render::ShaderManager::get("chunk"));
   m_registry.emplace<Engine::Chunk::ChunkPosition>(chunkEntity, chunkPos);
-  m_registry.emplace<Engine::Dirty>(chunkEntity);
+  m_registry.get_or_emplace<Engine::InUse>(chunkEntity).addUser();
 
   ThreadPool::getInstance().enqueueTask(
       [this, chunkEntity]() { generateChunkData(chunkEntity); });
@@ -55,6 +54,9 @@ void Engine::Chunk::ChunkManager::buildChunkMeshes() {
   auto view = m_registry.view<Engine::Dirty, Engine::Chunk::ChunkPosition,
                               Engine::Chunk::ChunkData>();
   for (auto entity : view) {
+    if (m_registry.all_of<Engine::InUse>(entity)) {
+      continue; // Chunk is in use, skip building
+    }
     auto &chunkPos = view.get<Engine::Chunk::ChunkPosition>(entity);
 
     ChunkNeighborhood neighborhood;
@@ -114,20 +116,24 @@ void Engine::Chunk::ChunkManager::buildChunkMeshes() {
       neighborhood.nz =
           &m_registry.get<Engine::Chunk::ChunkData>(neighborEntity);
     }
-    
+
     m_registry.remove<Engine::Dirty>(entity);
-    m_registry.get_or_emplace<Engine::InUse>(entity);
-    auto& chunkMesh = m_registry.get_or_emplace<Engine::Chunk::ChunkMesh>(entity);
-    chunkMesh.vertices.clear();
-    chunkMesh.indices.clear();
-    ThreadPool::getInstance().enqueueTask([this, entity, neighborhood, &chunkMesh]() {
-      buildChunkMesh(entity, chunkMesh, neighborhood);
-    });
+    m_registry.get_or_emplace<Engine::InUse>(entity).addUser();
+    auto &chunkMesh =
+        m_registry.get_or_emplace<Engine::Chunk::ChunkMesh>(entity);
+    // chunkMesh.vertices.clear();
+    // chunkMesh.indices.clear();
+    chunkMesh.clean();
+    ThreadPool::getInstance().enqueueTask(
+        [this, entity, neighborhood, &chunkMesh]() {
+          buildChunkMesh(entity, chunkMesh, neighborhood);
+        });
   }
 }
 
 void Engine::Chunk::ChunkManager::buildChunkMesh(
-    entt::entity chunkEntity,ChunkMesh& chunkMesh, const ChunkNeighborhood &neighborhood) {
+    entt::entity chunkEntity, ChunkMesh &chunkMesh,
+    const ChunkNeighborhood &neighborhood) {
   if (!m_registry.valid(chunkEntity)) {
     SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
                 "Attempted to build mesh for invalid chunk entity");
@@ -137,8 +143,10 @@ void Engine::Chunk::ChunkManager::buildChunkMesh(
   auto &chunkData = m_registry.get<Engine::Chunk::ChunkData>(chunkEntity);
 
   auto chunkUpdate = chunkData.buildChunkMesh(neighborhood, chunkMesh);
-  m_chunkUpdateQueue.enqueue(std::make_shared<Engine::Chunk::ChunkUpdate>(
-      chunkEntity, true, nullptr));
+  // m_chunkUpdateQueue.enqueue(
+  //     std::make_shared<Engine::Chunk::ChunkUpdate>(chunkEntity, true,
+  //     nullptr));
+  m_chunkSetupQueue.enqueue(chunkEntity);
 }
 
 void Engine::Chunk::ChunkManager::processChunkUpdates() {
@@ -150,14 +158,21 @@ void Engine::Chunk::ChunkManager::processChunkUpdates() {
       continue; // Entity no longer exists
     }
 
-    if (chunkUpdate->newMesh == true) {
-      m_registry.remove<Engine::InUse>(chunkUpdate->entity);
-      auto &chunkMesh =
-        m_registry.get<Engine::Chunk::ChunkMesh>(chunkUpdate->entity);
-      chunkMesh.setupMesh();
-    }
+    // if (chunkUpdate->newMesh == true) {
+    //   auto &inUse = m_registry.get<Engine::InUse>(chunkUpdate->entity);
+    //   if (inUse.removeUser()) {
+    //     m_registry.remove<Engine::InUse>(chunkUpdate->entity);
+    //   }
+    //   auto &chunkMesh =
+    //       m_registry.get<Engine::Chunk::ChunkMesh>(chunkUpdate->entity);
+    //   chunkMesh.setupMesh();
+    // }
 
     if (chunkUpdate->newData != nullptr) {
+      auto &inUse = m_registry.get<Engine::InUse>(chunkUpdate->entity);
+      if (inUse.removeUser()) {
+        m_registry.remove<Engine::InUse>(chunkUpdate->entity);
+      }
       m_registry.emplace_or_replace<Engine::Chunk::ChunkData>(
           chunkUpdate->entity, *(chunkUpdate->newData));
       if (m_registry.all_of<ChunkPosition>(chunkUpdate->entity)) {
@@ -166,7 +181,25 @@ void Engine::Chunk::ChunkManager::processChunkUpdates() {
         for (const auto &neighborPos : chunkPos.neighbors()) {
           tryAddChunkToBuildQueue(neighborPos);
         }
+        tryAddChunkToBuildQueue(chunkPos);
       }
+    }
+  }
+  m_chunksSetupThisFrame = 0;
+  entt::entity chunkEntity;
+  while (m_chunkSetupQueue.try_dequeue(chunkEntity)) {
+    if (!m_registry.valid(chunkEntity)) {
+      continue; // Entity no longer exists
+    }
+    auto &inUse = m_registry.get<Engine::InUse>(chunkEntity);
+    if (inUse.removeUser()) {
+      m_registry.remove<Engine::InUse>(chunkEntity);
+    }
+    auto &chunkMesh = m_registry.get<Engine::Chunk::ChunkMesh>(chunkEntity);
+    chunkMesh.setupMesh();
+    m_chunksSetupThisFrame++;
+    if (m_chunksSetupThisFrame >= m_maxChunkSetupsPerFrame) {
+      break;
     }
   }
 }
@@ -191,7 +224,7 @@ void Engine::Chunk::ChunkManager::deleteOldChunks(int playerX, int playerZ,
   auto view = m_registry.view<Engine::Chunk::ChunkPosition>();
   std::vector<Engine::Chunk::ChunkPosition> chunksToDelete;
   radius += 1;
-  for (auto entity: view) {
+  for (auto entity : view) {
     const auto &chunkPos = view.get<Engine::Chunk::ChunkPosition>(entity);
     int dx = chunkPos.x - playerX;
     int dz = chunkPos.z - playerZ;
@@ -201,13 +234,15 @@ void Engine::Chunk::ChunkManager::deleteOldChunks(int playerX, int playerZ,
       for (const auto &neighborPos : chunkPos.neighbors()) {
         entt::entity neighborEntity = getChunk(neighborPos);
         if (neighborEntity != entt::null && m_registry.valid(neighborEntity)) {
-          if (m_registry.all_of<Engine::InUse>(neighborEntity)) {
+          if (m_registry.all_of<Engine::InUse>(neighborEntity) ||
+              m_registry.all_of<Engine::Dirty>(neighborEntity)) {
             unfinishedChunk = true;
             break;
           }
         }
       }
-      if (unfinishedChunk) continue;
+      if (unfinishedChunk)
+        continue;
       chunksToDelete.push_back(chunkPos);
     }
   }

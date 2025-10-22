@@ -45,7 +45,7 @@ public:
 
   void deleteOldChunks(int playerX, int playerZ, int radius);
   void deleteChunk(int x, int y, int z);
-  void buildChunkMesh(entt::entity chunkEntity,ChunkMesh& chunkMesh,
+  void buildChunkMesh(entt::entity chunkEntity, ChunkMesh &chunkMesh,
                       const ChunkNeighborhood &neighborhood);
   void processChunkUpdates();
   void loadNewChunks(ChunkPosition playerPos, int renderDistance);
@@ -59,7 +59,8 @@ private:
   std::unordered_map<Engine::Chunk::ChunkPosition, entt::entity> m_chunkMap;
   moodycamel::ConcurrentQueue<std::shared_ptr<Engine::Chunk::ChunkUpdate>>
       m_chunkUpdateQueue;
-  unsigned int m_maxChunkUpdatesPerFrame = 8;
-  unsigned int m_chunksUpdatedThisFrame = 0;
+  moodycamel::ConcurrentQueue<entt::entity> m_chunkSetupQueue;
+  unsigned int m_maxChunkSetupsPerFrame = 8;
+  unsigned int m_chunksSetupThisFrame = 0;
 };
 } // namespace Engine::Chunk
