@@ -1,5 +1,6 @@
 #include "engine/ShaderManager.hpp"
 #include "SDL3/SDL_log.h"
+#include "core/Log.hpp"
 #include "engine/File.hpp"
 
 Engine::Render::Shader::Shader(const char *vertexSource,
@@ -11,7 +12,7 @@ Engine::Render::Shader::Shader(const char *vertexSource,
       vertexCode.c_str(), fragmentCode.c_str());
 }
 Engine::Render::Shader::~Shader() {
-  SDL_Log("Deleting shader program");
+  LOG_TRACE("Deleting shader program");
   glDeleteProgram(m_programID);
 }
 
@@ -26,7 +27,7 @@ GLuint Engine::Render::ShaderManager::compileShader(GLenum type,
   if (!success) {
     char infoLog[512];
     glGetShaderInfoLog(shader, 512, nullptr, infoLog);
-    SDL_Log("ERROR::SHADER::COMPILATION_FAILED\n%s", infoLog);
+    LOG_ERROR("Failed to compile shader {}: {}", source, infoLog);
   }
   return shader;
 }
@@ -47,7 +48,7 @@ Engine::Render::ShaderManager::createShaderProgram(const char *vertexSource,
   if (!success) {
     char infoLog[512];
     glGetProgramInfoLog(shaderProgram, 512, nullptr, infoLog);
-    SDL_Log("ERROR::SHADER::PROGRAM::LINKING_FAILED\n%s", infoLog);
+    LOG_ERROR("Couldn't link shader {}, {}: {}", vertexSource, fragmentShader, infoLog);
   }
 
   glDeleteShader(vertexShader);

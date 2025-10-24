@@ -7,6 +7,7 @@
 #include <SDL3/SDL_main.h>
 #include <core/Application.hpp>
 #include <windows.h>
+#include "core/Log.hpp"
 
 void AttachConsoleForLogging() {
   AllocConsole();                  // create a new console
@@ -15,7 +16,9 @@ void AttachConsoleForLogging() {
 }
 /* This function runs once at startup. */
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
+  // LOG_TRACE("Starting app");
   AttachConsoleForLogging();
+  Core::Log::Init();
 
   *appstate = new Core::Application();
   Core::Application *app = (Core::Application *)(*appstate);
@@ -51,6 +54,6 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result) {
     // SDL_DestroyWindow(app->getWindow());
     delete app;
   }
-  SDL_Log("Exiting with result %d", result);
+  LOG_INFO("Exiting with result {}", static_cast<int>(result));
   SDL_Quit();
 }

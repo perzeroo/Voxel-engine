@@ -261,7 +261,7 @@ void Engine::Chunk::ChunkManager::deleteChunk(int x, int y, int z) {
   auto chunkPos = Engine::Chunk::ChunkPosition{x, y, z};
   entt::entity chunkEntity = getChunk(chunkPos);
   if (chunkEntity == entt::null || !m_registry.valid(chunkEntity)) {
-    LOG_WARN("Chunk at (%d, %d, %d) does not exist", x, y, z);
+    LOG_WARN("Chunk at ({}, {}, {}) does not exist", x, y, z);
     return; // Chunk does not exist
   }
   if (m_registry.all_of<Engine::Dirty>(chunkEntity) ||

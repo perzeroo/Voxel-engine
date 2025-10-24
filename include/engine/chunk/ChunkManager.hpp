@@ -53,6 +53,8 @@ public:
   void processChunkUpdates();
   void loadNewChunks(ChunkPosition playerPos, int renderDistance);
   void tryAddChunkToBuildQueue(ChunkPosition pos);
+  void update();
+  void render();
 
   ~ChunkManager() = default;
 

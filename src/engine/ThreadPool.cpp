@@ -1,8 +1,8 @@
 #include "engine/ThreadPool.hpp"
-#include "SDL3/SDL_log.h"
+#include "core/Log.hpp"
 Engine::ThreadPool::ThreadPool() {
   unsigned int threadCount = std::thread::hardware_concurrency() - 2;
-  SDL_Log("Detected %u hardware threads", threadCount);
+  LOG_INFO("Detected {} hardware threads", threadCount);
   if (threadCount == 0) {
     threadCount =
         2; // Fallback to 2 threads if hardware_concurrency can't detect

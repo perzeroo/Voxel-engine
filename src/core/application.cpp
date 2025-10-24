@@ -30,7 +30,7 @@ Application::Application()
           std::make_unique<Engine::Chunk::ChunkManager>(m_registry)) {
   SDL_SetAppMetadata("Voxel Engine", "1.0", "me.perzero.voxel-engine");
 
-  Core::Log::Init();
+  // Core::Log::Init();
   LOG_INFO("Engine starting");
   if (*m_window == nullptr) {
     LOG_CRITICAL("Couldn't create window");
