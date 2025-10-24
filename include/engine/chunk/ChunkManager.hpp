@@ -1,4 +1,5 @@
 #pragma once
+#include "engine/Texture.hpp"
 #include "engine/chunk/ChunkData.hpp"
 #include "engine/chunk/ChunkMesh.hpp"
 #include "engine/chunk/ChunkPosition.hpp"
@@ -13,35 +14,12 @@
 namespace Engine::Chunk {
 class ChunkManager {
 public:
-  ChunkManager(entt::registry &registry)
-      : m_registry(registry), m_worldGenerator() {}
+  ChunkManager();
 
   entt::entity createChunk(int x, int y, int z);
-  entt::entity getChunk(const Engine::Chunk::ChunkPosition &position) const {
-    auto it = m_chunkMap.find(position);
-    if (it != m_chunkMap.end() && m_registry.valid(it->second)) {
-      return it->second;
-    }
-    return entt::null;
-  }
+  entt::entity getChunk(const Engine::Chunk::ChunkPosition &position) const;
 
-  Engine::Voxel::Voxel getBlock(int x, int y, int z) const {
-    Engine::Chunk::ChunkPosition chunkPos = {x / 32, y / 32, z / 32};
-    entt::entity chunkEntity = getChunk(chunkPos);
-    if (chunkEntity == entt::null) {
-      return {Voxel::VoxelType::Air};
-    }
-    auto &chunkData = m_registry.get<Engine::Chunk::ChunkData>(chunkEntity);
-    int localX = x % 32;
-    int localY = y % 32;
-    int localZ = z % 32;
-    int index = Engine::Chunk::getIdx(localX, localY, localZ);
-    if (index < 0 || index >= CHUNK_SIZE) {
-      return {Voxel::VoxelType::Air};
-    }
-    return chunkData.voxels[index];
-  }
-
+  Engine::Voxel::Voxel getBlock(int x, int y, int z) const;
   void generateChunkData(entt::entity chunkEntity);
   void buildChunkMeshes();
 
@@ -53,13 +31,14 @@ public:
   void processChunkUpdates();
   void loadNewChunks(ChunkPosition playerPos, int renderDistance);
   void tryAddChunkToBuildQueue(ChunkPosition pos);
+  void setRenderDistance(unsigned int distance) { m_renderDistance = distance; }
+  unsigned int getRenderDistance() const { return m_renderDistance; }
   void update();
-  void render();
+  void render(const glm::mat4 &viewProjection);
 
   ~ChunkManager() = default;
 
 private:
-  entt::registry &m_registry;
   Engine::World::WorldGenerator m_worldGenerator;
   std::unordered_map<Engine::Chunk::ChunkPosition, entt::entity> m_chunkMap;
   moodycamel::ConcurrentQueue<std::shared_ptr<Engine::Chunk::ChunkUpdate>>
@@ -67,5 +46,7 @@ private:
   moodycamel::ConcurrentQueue<entt::entity> m_chunkSetupQueue;
   unsigned int m_maxChunkSetupsPerFrame = 16;
   unsigned int m_chunksSetupThisFrame = 0;
+  unsigned int m_renderDistance = 8;
+  Engine::Texture &m_voxelTexture;
 };
 } // namespace Engine::Chunk

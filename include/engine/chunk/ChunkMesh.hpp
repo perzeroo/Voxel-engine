@@ -41,8 +41,7 @@ struct ChunkMesh {
 };
 struct ChunkMeshRenderer {
   Engine::Render::Shader &shader;
-  void render(ChunkMesh &mesh, const ChunkPosition &position,
-              const glm::mat4 &viewProjection) {
+  void render(ChunkMesh &mesh, const ChunkPosition &position) {
     if (mesh.VAO == 0) {
       return; // Nothing to render
     }

@@ -1,6 +1,7 @@
 #include "engine/Render.hpp"
 #include <engine/Texture.hpp>
 #include <engine/chunk/ChunkMesh.hpp>
+#include <engine/utils/TextureUtils.hpp>
 #include <iostream>
 
 void Engine::Chunk::ChunkMesh::on_destroy(entt::registry &registry,
@@ -93,9 +94,9 @@ void Engine::Chunk::ChunkMeshData::addFaceFromIndex(int faceIndex, float x,
       vert.position = Render::FACE_VERTEX_POSITIONS[faceIndex][i];
       vert.position += glm::vec3(x, y, z);
       vert.normal = Render::FACE_NORMALS[faceIndex];
-      uint8_t tileIndex = Engine::Texture::getTileIndex(
+      uint8_t tileIndex = Engine::Utils::getTileIndex(
           type.type, static_cast<Render::FaceDirection>(faceIndex));
-      vert.uv = Engine::Texture::getUV(tileIndex, Render::FACE_UV_COORDS[i]);
+      vert.uv = Engine::Utils::getUV(tileIndex, Render::FACE_UV_COORDS[i]);
       if (x < 0 || y < 0 || z < 0) {
         std::cout << "Warning: Negative vertex position detected: ("
                   << vert.position.x << ", " << vert.position.y << ", "

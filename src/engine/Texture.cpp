@@ -4,8 +4,7 @@
 #include "glm/common.hpp"
 #include "thirdparty/stb/stb_image.hpp"
 
-
-Engine::Texture::TextureManager::TextureManager() {
+Engine::TextureManager::TextureManager() {
   int width, height, channels;
   unsigned char *imageData =
       stbi_load("assets/textures/VoxelSprites.png", &width, &height, &channels,
@@ -32,6 +31,6 @@ Engine::Texture::TextureManager::TextureManager() {
   stbi_image_free(imageData);
 }
 
-Engine::Texture::TextureManager::~TextureManager() {
+Engine::TextureManager::~TextureManager() {
   glDeleteTextures(1, &m_voxelTextureID);
 }

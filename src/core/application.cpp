@@ -25,12 +25,14 @@
 #include <tracy/Tracy.hpp>
 
 namespace Core {
-Application::Application()
-    : m_chunkManager(
-          std::make_unique<Engine::Chunk::ChunkManager>(m_registry)) {
+
+Application *Application::s_instance = nullptr;
+
+Application::Application() {
+  s_instance = this;
+
   SDL_SetAppMetadata("Voxel Engine", "1.0", "me.perzero.voxel-engine");
 
-  // Core::Log::Init();
   LOG_INFO("Engine starting");
   if (*m_window == nullptr) {
     LOG_CRITICAL("Couldn't create window");
@@ -77,17 +79,7 @@ void Application::update() {
   if (m_activeCamera == entt::null) {
     return;
   }
-
-  auto playerChunkPos =
-      m_registry.get<Engine::Transform>(m_activeCamera).getChunkPosition();
-
-  m_chunkManager->processChunkUpdates();
-  m_chunkManager->buildChunkMeshes();
-
-  auto chunksDeleted = m_chunkManager->deleteOldChunks(
-      playerChunkPos.x, playerChunkPos.z, m_renderDistance);
-  if (chunksDeleted)
-    m_chunkManager->loadNewChunks(playerChunkPos, m_renderDistance);
+  m_chunkManager.update();
 }
 
 void Application::handleEvents(SDL_Event *event) {
@@ -124,13 +116,7 @@ void Application::render() {
 
     auto renderedChunksView =
         m_registry
-            .view<Engine::Chunk::ChunkMesh, Engine::Chunk::ChunkMeshRenderer,
-                  Engine::Chunk::ChunkPosition>();
-
-    const Engine::Render::Shader &chunkShader =
-        Engine::Render::ShaderManager::get("chunk");
-    chunkShader.use();
-    chunkShader.setMat4("u_ViewProjection", viewProjection);
+            .view<Engine::Chunk::ChunkMesh, Engine::Chunk::ChunkPosition>();
 
     m_textureManager.useVoxelTexture();
 
@@ -140,19 +126,13 @@ void Application::render() {
     auto &cameraTransform = m_registry.get<Engine::Transform>(m_activeCamera);
     for (auto entity : renderedChunksView) {
       auto &mesh = renderedChunksView.get<Engine::Chunk::ChunkMesh>(entity);
-      if (!m_registry.all_of<Engine::Dirty>(entity) &&
-          !m_registry.all_of<Engine::InUse>(entity)) {
-        mesh.clean();
-      }
       auto &position =
           renderedChunksView.get<Engine::Chunk::ChunkPosition>(entity);
       auto fPos = position.toWorldPosition() - cameraTransform.position +
                   (camera.front * static_cast<float>(CHUNK_WIDTH) / 2.0f);
-      fPos += glm::vec3(static_cast<float>(CHUNK_WIDTH) / 2.0f);
       auto fPosNorm = glm::normalize(fPos);
       float dot =
           glm::dot(camera.front, fPosNorm); // camera.front is normalized
-      // float threshold = cos(glm::radians(60.0f) / 2.0f);
       float threshold = 0.0f;
       if (dot < threshold) {
         continue;
@@ -160,9 +140,6 @@ void Application::render() {
 
       totalTriangles += static_cast<unsigned int>(mesh.indicesSize);
       totalChunks++;
-      auto &renderer =
-          renderedChunksView.get<Engine::Chunk::ChunkMeshRenderer>(entity);
-      renderer.render(mesh, position, viewProjection);
     }
     totalTriangles /= 3;
     std::string sTotalTriangles =
