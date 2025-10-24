@@ -1,12 +1,10 @@
 #include "core/Common.hpp"
 #include "core/Log.hpp"
 #include "core/Window.hpp"
-#include "engine/Engine.hpp"
 #include "glm/geometric.hpp"
 #define STB_IMAGE_IMPLEMENTATION
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_keycode.h"
-#include "SDL3/SDL_log.h"
 #include "SDL3/SDL_timer.h"
 #include "engine/Camera.hpp"
 #include "engine/ImGuiHelper.hpp"
@@ -21,7 +19,6 @@
 #include "imgui_impl_sdl3.h"
 #include "thirdparty/stb/stb_image.hpp"
 #include <core/Application.hpp>
-#include <memory>
 #include <tracy/Tracy.hpp>
 
 namespace Core {
@@ -47,6 +44,7 @@ Application::Application() {
                                       "assets/shaders/basic.frag");
   Engine::Render::ShaderManager::load("chunk", "assets/shaders/chunk.vert",
                                       "assets/shaders/chunk.frag");
+  m_chunkManager.init();
   m_window.setMouseFocus(true);
 
   Engine::Input::instance().init(this);
@@ -118,7 +116,7 @@ void Application::render() {
         m_registry
             .view<Engine::Chunk::ChunkMesh, Engine::Chunk::ChunkPosition>();
 
-    m_textureManager.useVoxelTexture();
+    m_chunkManager.render(viewProjection);
 
     unsigned int totalTriangles = 0;
     unsigned int totalChunks = 0;
@@ -169,7 +167,9 @@ void Application::renderDebugSettingsWindow() {
   auto &cc = m_registry.get<Engine::CameraController>(m_activeCamera);
   ImGui::Begin("Settings");
   ImGui::Text("Render Distance");
-  if (ImGui::SliderInt("##RenderDistance", &m_renderDistance, 1, 32)) {
+  int rd = m_chunkManager.getRenderDistance();
+  if (ImGui::SliderInt("##RenderDistance", &rd, 1, 32)) {
+    m_chunkManager.setRenderDistance(static_cast<unsigned int>(rd));
     // m_chunkManager->forceChunkReload();
   }
   if (ImGui::SliderFloat("Movement Speed", &cc.movementSpeed, 1.0f, 50.0f)) {

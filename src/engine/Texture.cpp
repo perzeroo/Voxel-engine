@@ -4,33 +4,45 @@
 #include "glm/common.hpp"
 #include "thirdparty/stb/stb_image.hpp"
 
-Engine::TextureManager::TextureManager() {
+Engine::Texture::Texture(const std::string &path, uint32_t id) : m_id(id) {
   int width, height, channels;
-  unsigned char *imageData =
-      stbi_load("assets/textures/VoxelSprites.png", &width, &height, &channels,
-                4); // 4 = force RGBA
-
-  if (!imageData) {
-    LOG_ERROR("Failed to load texture: assets/textures/VoxelSprites.png");
-    m_voxelTextureID = 0;
+  unsigned char *data = stbi_load(path.c_str(), &width, &height, &channels, 0);
+  if (!data) {
+    LOG_ERROR("Failed to load texture: {}", path);
+    m_textureID = 0;
     return;
   }
 
-  glGenTextures(1, &m_voxelTextureID);
-  glBindTexture(GL_TEXTURE_2D, m_voxelTextureID);
+  glGenTextures(1, &m_textureID);
+  glBindTexture(GL_TEXTURE_2D, m_textureID);
 
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
-               GL_UNSIGNED_BYTE, imageData);
-  glGenerateMipmap(GL_TEXTURE_2D);
+  GLenum format = GL_RGB;
+  switch (channels) {
+  case 1:
+    format = GL_RED;
+    break;
+  case 3:
+    format = GL_RGB;
+    break;
+  case 4:
+    format = GL_RGBA;
+    break;
+  }
+
+  glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format,
+               GL_UNSIGNED_BYTE, data);
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-  stbi_image_free(imageData);
-}
+  glGenerateMipmap(GL_TEXTURE_2D);
 
-Engine::TextureManager::~TextureManager() {
-  glDeleteTextures(1, &m_voxelTextureID);
+  stbi_image_free(data);
+}
+Engine::Texture::~Texture() {
+  if (m_textureID != 0) {
+    glDeleteTextures(1, &m_textureID);
+  }
 }

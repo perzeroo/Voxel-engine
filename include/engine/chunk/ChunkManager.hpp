@@ -14,7 +14,7 @@
 namespace Engine::Chunk {
 class ChunkManager {
 public:
-  ChunkManager();
+  ChunkManager() = default;
 
   entt::entity createChunk(int x, int y, int z);
   entt::entity getChunk(const Engine::Chunk::ChunkPosition &position) const;
@@ -36,6 +36,8 @@ public:
   void update();
   void render(const glm::mat4 &viewProjection);
 
+  void init();
+
   ~ChunkManager() = default;
 
 private:
@@ -47,6 +49,6 @@ private:
   unsigned int m_maxChunkSetupsPerFrame = 16;
   unsigned int m_chunksSetupThisFrame = 0;
   unsigned int m_renderDistance = 8;
-  Engine::Texture &m_voxelTexture;
+  std::shared_ptr<Engine::Texture> m_voxelTexture;
 };
 } // namespace Engine::Chunk

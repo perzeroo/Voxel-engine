@@ -29,12 +29,12 @@ public:
 private:
   entt::registry m_registry;
   Window m_window;
+  Engine::TextureManager m_textureManager;
 
   uint64_t m_now, m_last;
 
   Engine::Chunk::ChunkManager m_chunkManager;
 
-  Engine::TextureManager m_textureManager;
   entt::entity m_activeCamera = entt::null;
   int m_renderDistance = 8;
   ImColor m_skyColor = ImColor(0.53f, 0.81f, 0.92f);

@@ -1,1 +1,8 @@
-[15:42:28] [info] ENGINE: Engine starting
+[19:01:41] [info] ENGINE: Initializing SDL window
+[19:01:41] [info] ENGINE: Engine starting
+[19:01:41] [trace] ENGINE: Deleting shader program
+[19:01:41] [trace] ENGINE: Deleting shader program
+[19:01:41] [info] ENGINE: Detected 14 hardware threads
+[19:01:51] [info] ENGINE: Window resized to %dx%d
+[19:02:30] [info] ENGINE: Destroying window
+[19:02:30] [info] ENGINE: Exiting with result 1

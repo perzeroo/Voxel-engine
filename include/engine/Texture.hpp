@@ -2,13 +2,14 @@
 #include "engine/Render.hpp"
 #include "glm/glm.hpp"
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace Engine {
 class Texture {
 public:
-  Texture(const std::string &path);
+  Texture(const std::string &path, uint32_t id);
   Texture(Texture &&) = default;
   Texture(const Texture &) = default;
   Texture &operator=(Texture &&) = default;
@@ -21,27 +22,24 @@ public:
 
 private:
   GLuint m_textureID;
+  uint32_t m_id;
 };
 
 class TextureManager {
 public:
-  TextureManager();
+  TextureManager() = default;
   TextureManager(TextureManager &&) = default;
   TextureManager(const TextureManager &) = default;
   TextureManager &operator=(TextureManager &&) = default;
   TextureManager &operator=(const TextureManager &) = default;
-  ~TextureManager();
-  Texture &loadTexture(const std::string &path) {
-    m_textures.emplace_back(path);
-    return m_textures.back();
-  }
-  void useVoxelTexture() const {
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, m_voxelTextureID);
+  ~TextureManager() = default;
+  std::shared_ptr<Texture> loadTexture(const std::string &path) {
+    auto tx = std::make_shared<Texture>(path, 0);
+    m_textures.push_back(tx);
+    return tx;
   }
 
 private:
-  std::vector<Engine::Texture> m_textures;
-  GLuint m_voxelTextureID;
+  std::vector<std::weak_ptr<Texture>> m_textures;
 };
 } // namespace Engine
