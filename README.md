@@ -1,5 +1,9 @@
 # Voxel Engine
 ## Build
+Clone the project
+```bash
+git clone --recursive https://github.com/perzeroo/Voxel-engine.git
+```
 Navigate to the project root and run:
 ```bash
 cmake -G "Ninja" -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=RelWithDebInfo -B build
